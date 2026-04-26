@@ -1,0 +1,81 @@
+# docker-compose.yml — Lulu Brechó · Sistema de Vales
+#
+# Otimizado para Dokploy:
+#   - SEM `ports:` no `app` (Traefik roteia via labels que o Dokploy injeta pelo painel).
+#   - `app` está na network externa `dokploy-network` (Traefik a usa).
+#   - Postgres é privado (network interna), nunca exposto.
+#   - Volumes nomeados sobrevivem a redeploys.
+#   - Healthchecks em ambos os serviços (Dokploy aguarda saúde antes do roteamento).
+#
+# Configure no painel do Dokploy:
+#   - Variáveis de ambiente (Environment): AUTH_USER, AUTH_PASSWORD, AUTH_SECRET,
+#     POSTGRES_PASSWORD (e opcionalmente POSTGRES_USER, POSTGRES_DB).
+#   - Domínio (Domains): aponte o serviço `app`, porta `3000`, com SSL automático.
+
+services:
+  app:
+    container_name: lulu-app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    environment:
+      NODE_ENV: production
+      DATA_DIR: /data
+      DATABASE_URL: postgres://${POSTGRES_USER:-lulu}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-lulu_vales}
+      AUTH_USER: ${AUTH_USER}
+      AUTH_PASSWORD: ${AUTH_PASSWORD}
+      AUTH_SECRET: ${AUTH_SECRET}
+    volumes:
+      - lulu_appdata:/data
+    expose:
+      - "3000"
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - dokploy-network
+      - internal
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  db:
+    container_name: lulu-db
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-lulu}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-lulu_vales}
+      # Aceita conexões só dentro da network internal
+      POSTGRES_HOST_AUTH_METHOD: scram-sha-256
+      POSTGRES_INITDB_ARGS: "--auth-host=scram-sha-256"
+    volumes:
+      - lulu_pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    networks:
+      - internal
+    healthcheck:
+      test:
+        - CMD-SHELL
+        - pg_isready -U ${POSTGRES_USER:-lulu} -d ${POSTGRES_DB:-lulu_vales}
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  lulu_pgdata:
+    name: lulu_pgdata
+  lulu_appdata:
+    name: lulu_appdata
+
+networks:
+  dokploy-network:
+    external: true
+  internal:
+    driver: bridge

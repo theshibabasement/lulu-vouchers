@@ -1,0 +1,145 @@
+@import url('https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600;700&family=Baloo+2:wght@500;700;800&family=Nunito:wght@400;600;700;800&family=JetBrains+Mono:wght@500;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body {
+    background: #FFFDF8;
+    color: #3A2A5A;
+    font-family: 'Nunito', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  body {
+    background-image:
+      radial-gradient(circle at 12% 8%, rgba(236, 30, 121, 0.06) 0%, transparent 38%),
+      radial-gradient(circle at 88% 92%, rgba(155, 111, 212, 0.08) 0%, transparent 38%),
+      radial-gradient(circle at 50% 50%, rgba(39, 185, 230, 0.04) 0%, transparent 50%);
+    min-height: 100vh;
+  }
+}
+
+@layer components {
+  .sticker-text {
+    font-family: 'Baloo 2', 'Fredoka', sans-serif;
+    font-weight: 800;
+    color: #fff;
+    -webkit-text-stroke: 4px #3A2A5A;
+    paint-order: stroke fill;
+    text-shadow: 0 4px 0 rgba(58, 42, 90, 0.25);
+    letter-spacing: 0.01em;
+  }
+  .lulu-card {
+    @apply bg-paper rounded-lg shadow-md border-2 border-line;
+  }
+  .lulu-input {
+    @apply w-full px-4 py-3 rounded-md border-2 border-line bg-paper-tint text-base
+           focus:outline-none focus:border-lulu-magenta focus:ring-4 focus:ring-lulu-magenta/15
+           transition placeholder:text-ink-mute;
+  }
+  .lulu-label {
+    @apply block text-xs font-bold uppercase tracking-wider text-ink-soft mb-2;
+  }
+  .lulu-btn {
+    @apply font-display font-bold text-base px-5 py-3 rounded-md border-[3px] border-ink
+           shadow-sticker active:translate-y-[2px] active:shadow-none transition
+           hover:translate-y-[-1px];
+  }
+  .lulu-btn-primary {
+    @apply lulu-btn bg-lulu-magenta text-white;
+  }
+  .lulu-btn-secondary {
+    @apply lulu-btn bg-paper text-ink hover:bg-paper-tint;
+  }
+  .lulu-btn-accent {
+    @apply lulu-btn bg-lulu-yellow text-ink;
+  }
+  .lulu-pill {
+    @apply inline-block px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider;
+  }
+}
+
+/* ------- Receipt (cupom) ------- */
+.receipt {
+  font-family: 'Nunito', sans-serif;
+  font-size: 11pt;
+  line-height: 1.45;
+  color: #000;
+}
+.receipt .brand {
+  font-family: 'Baloo 2', 'Fredoka', sans-serif;
+  text-align: center;
+  font-size: 18pt;
+  font-weight: 800;
+  letter-spacing: -0.01em;
+  color: #9B6FD4;
+  margin-bottom: 2px;
+}
+.receipt .brand-sub {
+  text-align: center; font-size: 9pt;
+  letter-spacing: 0.22em; text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.receipt .divider { border: none; border-top: 1px dashed #000; margin: 8px 0; }
+.receipt .field-line { margin-bottom: 6px; }
+.receipt .field-line .lbl { font-weight: 700; }
+.receipt p { margin-bottom: 8px; text-align: justify; hyphens: auto; }
+.receipt .date { margin-top: 12px; font-size: 10pt; }
+.receipt .sign { margin-top: 22px; text-align: center; font-size: 9.5pt; }
+.receipt .sign .line { border-top: 1px solid #000; margin: 0 auto 4px; width: 80%; }
+.receipt .footer {
+  margin-top: 16px; text-align: center;
+  font-size: 8.5pt; letter-spacing: 0.14em; text-transform: uppercase;
+  color: #444;
+}
+.receipt .via {
+  text-align: center; font-size: 8pt; letter-spacing: 0.3em;
+  text-transform: uppercase; color: #555;
+  margin-top: 4px; margin-bottom: 6px;
+}
+.receipt .barcode { margin-top: 14px; text-align: center; }
+.receipt .barcode svg { max-width: 100%; height: auto; }
+.receipt .barcode .code-label {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9pt; margin-top: 2px;
+  letter-spacing: 0.06em; font-weight: 700;
+}
+
+/* ------- Print ------- */
+.print-area { display: none; }
+
+@media print {
+  @page { size: 80mm auto; margin: 0; }
+  html, body {
+    width: 80mm;
+    background: #fff !important;
+    background-image: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    color: #000 !important;
+  }
+  .app-shell, .lulu-overlay, .lulu-slide-over, .lulu-toast { display: none !important; }
+  .print-area { display: block !important; }
+  .receipt .brand { color: #000 !important; }
+  .print-receipt {
+    width: 80mm;
+    padding: 4mm 5mm 6mm;
+    box-sizing: border-box;
+    page-break-after: always;
+    break-after: page;
+    color: #000 !important;
+  }
+  .print-receipt:last-child {
+    page-break-after: auto;
+    break-after: auto;
+  }
+  body.print-only-cliente .print-receipt[data-via='loja'] { display: none !important; }
+  body.print-only-cliente .print-receipt[data-via='cliente'] {
+    page-break-after: auto !important; break-after: auto !important;
+  }
+  body.print-only-loja .print-receipt[data-via='cliente'] { display: none !important; }
+  body.print-only-loja .print-receipt[data-via='loja'] {
+    page-break-after: auto !important; break-after: auto !important;
+  }
+}
