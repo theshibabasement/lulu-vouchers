@@ -190,6 +190,29 @@ Aplica:
 
 Erro `column "deletado_em" does not exist` ao excluir vale = migração não rodou.
 
+### Configuração de impressão
+
+A app define tamanhos exatos por via via CSS `@page nomeado`:
+
+- Via do cliente: 80mm × 195mm
+- Via da loja: 80mm × 135mm
+
+Pra que o navegador respeite isso (e não force A4/Carta), no diálogo de
+impressão do Chrome/Edge:
+
+1. **Mais configurações** → **Tamanho do papel**: selecione **"Padrão"** ou
+   "Customizado" (não A4/Carta).
+2. **Margens**: **None** ou Padrão.
+3. **Escala**: **100%** (Padrão), nunca "Ajustar à página".
+
+**MP-4200 TH (impressora térmica real):**
+- Painel de Controle → Impressoras → MP-4200 TH → Preferências
+- Tamanho do papel: **80 x 200 mm** (ou "Roll Paper" / Personalizado)
+- Cut Mode / Recorte: **Page end cut** / **Após cada página**
+
+Com isso a fita corta entre as duas vias automaticamente após o
+`page-break-after: always` da via do cliente.
+
 ### Sobre o portal_token (segurança do QR)
 
 Token do QR é gerado por `gen_random_bytes(18)` (Postgres `pgcrypto`) → 18 bytes
