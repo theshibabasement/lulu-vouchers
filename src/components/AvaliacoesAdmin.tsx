@@ -197,29 +197,33 @@ function AvaliacaoCard({
   }
 
   function buildConfirmationText(): string {
-    const tamanhos = a.tamanhos.length > 0 ? `\n👗 Tamanhos: ${a.tamanhos.join(', ')}` : '';
-    const pecas = a.qtdPecas ? `\n📦 ${a.qtdPecas} peças (aproximado)` : '';
-    // Emoji 💖 (sparkling heart) é Unicode 6 — universal em qualquer cliente
-    // do WhatsApp. 🩷 (pink heart, Unicode 14) quebra em apps mais antigos.
+    const tamanhos = a.tamanhos.length > 0 ? `\nTamanhos: ${a.tamanhos.join(', ')}` : '';
+    const pecas = a.qtdPecas ? `\nQtd. peças (aproximado): ${a.qtdPecas}` : '';
+    // Sem emojis — alguns clientes WhatsApp renderizam como "?".
+    // Texto puro com acentos passa bem em todos.
     return [
-      `Oi ${firstName(a.nome)}! 💖 Aqui é a Lulu Arteira.`,
+      `Oi ${firstName(a.nome)}! Aqui é a Lulu Arteira.`,
       ``,
-      `Tua avaliação tá confirmada:`,
-      `📅 ${formatDate(a.dataHora)}`,
-      `🕘 ${hora}`,
+      `Tua avaliação está confirmada:`,
+      `Data: ${formatDate(a.dataHora)}`,
+      `Hora: ${hora}`,
       `${pecas}${tamanhos}`,
       ``,
-      `Te esperamos! ✨`,
+      `Te esperamos!`,
     ].join('\n');
   }
 
-  async function confirmarComWa() {
-    await onStatus('confirmada');
-    if (wa) {
-      const url = `${wa}?text=${encodeURIComponent(buildConfirmationText())}`;
-      window.open(url, '_blank', 'noopener,noreferrer');
-    }
+  /**
+   * Click handler do <a target="_blank"> que confirma a avaliação no servidor
+   * em background (fire-and-forget) e deixa o browser navegar pra wa.me.
+   * Não usar window.open após await — o gesture do click se perde e o
+   * browser pode bloquear.
+   */
+  function onConfirmarClick() {
+    onStatus('confirmada');
   }
+
+  const confirmacaoUrl = wa ? `${wa}?text=${encodeURIComponent(buildConfirmationText())}` : null;
 
   return (
     <div className="bg-paper rounded-md p-4 border-2 border-line">
@@ -258,13 +262,16 @@ function AvaliacaoCard({
 
       <div className="flex flex-wrap gap-2 mt-3">
         {a.status === 'pendente' && (
-          wa ? (
-            <button
-              onClick={confirmarComWa}
-              className="text-xs font-bold px-3 py-1.5 rounded-full border-2 border-ink bg-lulu-mint text-ink shadow-sticker hover:translate-y-[-1px] transition"
+          confirmacaoUrl ? (
+            <a
+              href={confirmacaoUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={onConfirmarClick}
+              className="text-xs font-bold px-3 py-1.5 rounded-full border-2 border-ink bg-lulu-mint text-ink shadow-sticker hover:translate-y-[-1px] transition inline-block"
             >
-              ✓ Confirmar + WhatsApp
-            </button>
+              Confirmar + WhatsApp
+            </a>
           ) : (
             <button
               onClick={() => onStatus('confirmada')}

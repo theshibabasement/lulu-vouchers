@@ -51,54 +51,64 @@ export function WhatsAppShareModal({ vale, portalBase, onClose, onWhatsappSaved 
   const url = vale.portalToken
     ? `${portalBase}/cliente/${encodeURIComponent(vale.portalToken)}`
     : `${portalBase}/cliente`;
-  // Emoji 💖 (sparkling heart) é Unicode 6 — universal em qualquer WhatsApp.
-  // 🩷 (pink heart) é Unicode 14 e quebra em clientes antigos.
+  // Sem emojis na mensagem enviada — alguns clientes WhatsApp (Desktop antigo
+  // em particular) renderizam emojis Unicode mais novos como "?".
+  // Acentos passam bem em todos os apps; mantidos.
   const text =
-    `Oi ${firstName}! Aqui é a Lulu Arteira 💖\n` +
+    `Oi ${firstName}! Aqui é a Lulu Arteira.\n` +
     `Teu vale tá pronto: ${formatBRL(vale.valorOriginal)} em crédito.\n\n` +
     `Confere o saldo e histórico aqui:\n${url}`;
 
   const validation = whatsapp.trim() ? validateWhatsappBR(whatsapp) : null;
   const validE164 = validation?.valid ? validation.e164 : null;
+  const fullLink = validE164
+    ? `https://wa.me/${validE164}?text=${encodeURIComponent(text)}`
+    : null;
 
   function copy() {
     navigator.clipboard.writeText(text).catch(() => {});
   }
 
-  async function abrirWhatsapp() {
-    if (!validE164 || saving) return;
-    setSaving(true);
+  /**
+   * Click handler do <a>: dispara save em background (fire-and-forget) e
+   * deixa o browser navegar via target="_blank". Não usar window.open após
+   * await — o gesture do click se perde e mobile pode bloquear ou abrir na
+   * mesma aba.
+   */
+  function onAbrirClick(e: React.MouseEvent<HTMLAnchorElement>) {
+    if (!fullLink || !vale) {
+      e.preventDefault();
+      return;
+    }
     setErr(null);
 
-    // Salva whatsapp no cadastro do cliente, se mudou
     const onlyDigitsCurrent = whatsapp.replace(/\D/g, '');
     const onlyDigitsOriginal = originalWhatsapp.replace(/\D/g, '');
     const changed = onlyDigitsCurrent !== onlyDigitsOriginal;
 
-    if (changed && vale!.clienteId) {
-      try {
-        const r = await fetch(`/api/clientes/${vale!.clienteId}`, {
-          method: 'PATCH',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ whatsapp: validation!.formatted }),
-        });
-        if (!r.ok) {
-          const j = (await r.json().catch(() => ({}))) as { error?: string };
-          throw new Error(j.error || 'Falha ao salvar WhatsApp.');
-        }
-        setOriginalWhatsapp(validation!.formatted ?? whatsapp);
-        onWhatsappSaved?.();
-      } catch (e) {
-        setErr((e as Error).message);
-        setSaving(false);
-        return; // não abre wa.me se falhou salvar
-      }
+    if (changed && vale.clienteId) {
+      // Background — não bloqueia abertura do WhatsApp
+      setSaving(true);
+      fetch(`/api/clientes/${vale.clienteId}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ whatsapp: validation?.formatted }),
+      })
+        .then(async (r) => {
+          if (!r.ok) {
+            const j = (await r.json().catch(() => ({}))) as { error?: string };
+            throw new Error(j.error || 'Falha ao salvar WhatsApp.');
+          }
+          setOriginalWhatsapp(validation?.formatted ?? whatsapp);
+          onWhatsappSaved?.();
+        })
+        .catch((err) => {
+          console.error('[whatsapp-share] save background falhou:', err);
+        })
+        .finally(() => setSaving(false));
     }
 
-    const fullLink = `https://wa.me/${validE164}?text=${encodeURIComponent(text)}`;
-    window.open(fullLink, '_blank', 'noopener,noreferrer');
-    setSaving(false);
-    setTimeout(onClose, 200);
+    setTimeout(onClose, 300);
   }
 
   return (
@@ -176,14 +186,25 @@ export function WhatsAppShareModal({ vale, portalBase, onClose, onWhatsappSaved 
         )}
 
         <div className="flex flex-col gap-3">
-          <button
-            type="button"
-            onClick={abrirWhatsapp}
-            disabled={!validE164 || saving}
-            className="w-full px-5 py-3 rounded-md font-display font-bold text-base border-[3px] border-ink shadow-sticker bg-lulu-mint text-ink active:translate-y-[2px] active:shadow-none transition disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {saving ? 'Salvando…' : !validE164 ? 'Informa um WhatsApp válido' : 'Abrir WhatsApp'}
-          </button>
+          {fullLink ? (
+            <a
+              href={fullLink}
+              target="_blank"
+              rel="noopener noreferrer"
+              onClick={onAbrirClick}
+              className="w-full px-5 py-3 rounded-md font-display font-bold text-base border-[3px] border-ink shadow-sticker bg-lulu-mint text-ink text-center active:translate-y-[2px] active:shadow-none transition"
+            >
+              {saving ? 'Salvando…' : 'Abrir WhatsApp'}
+            </a>
+          ) : (
+            <button
+              type="button"
+              disabled
+              className="w-full px-5 py-3 rounded-md font-display font-bold text-base border-[3px] border-ink shadow-sticker bg-paper text-ink-mute opacity-60 cursor-not-allowed"
+            >
+              Informa um WhatsApp válido
+            </button>
+          )}
 
           <button
             type="button"
