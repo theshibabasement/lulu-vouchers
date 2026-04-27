@@ -146,8 +146,8 @@ export function ValeDetail({ vale, onClose, onAbater, onReprint, onDelete }: Pro
           </Section>
 
           <Section title="Código de barras">
-            <div className="bg-white p-4 border-2 border-line rounded-md text-center mb-3">
-              <svg ref={svgRef}></svg>
+            <div className="bg-white p-4 border-2 border-line rounded-md mb-3 flex justify-center items-center overflow-hidden">
+              <svg ref={svgRef} className="block max-w-full h-auto"></svg>
             </div>
             <button onClick={() => onReprint(vale)} className="lulu-btn-secondary w-full">
               Reimprimir guias

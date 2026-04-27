@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { CalendarioAvaliacoes } from './CalendarioAvaliacoes';
 import { formatCPF, formatDate, formatDateTime, whatsappLink } from '@/lib/format';
 import type { Avaliacao, AvaliacaoStatus } from '@/lib/types';
 
@@ -27,7 +28,8 @@ interface Props {
 export function AvaliacoesAdmin({ onToast }: Props) {
   const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filtro, setFiltro] = useState<'futuras' | 'todas' | 'pendentes' | 'hoje'>('futuras');
+  const [filtro, setFiltro] = useState<'futuras' | 'calendario' | 'pendentes' | 'hoje'>('futuras');
+  const [selectedDay, setSelectedDay] = useState<string | null>(null);
 
   async function load() {
     setLoading(true);
@@ -61,13 +63,20 @@ export function AvaliacoesAdmin({ onToast }: Props) {
           return t >= start.getTime() && t <= end.getTime();
         });
       }
-      case 'todas':
-        return avaliacoes;
+      case 'calendario': {
+        if (!selectedDay) return [];
+        return avaliacoes.filter((a) => {
+          const d = new Date(a.dataHora);
+          const p = (n: number) => String(n).padStart(2, '0');
+          const k = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+          return k === selectedDay;
+        });
+      }
       case 'futuras':
       default:
         return avaliacoes.filter((a) => new Date(a.dataHora).getTime() >= now - 1000 * 60 * 60);
     }
-  }, [avaliacoes, filtro]);
+  }, [avaliacoes, filtro, selectedDay]);
 
   // Agrupa por dia
   const grouped = useMemo(() => {
@@ -120,12 +129,15 @@ export function AvaliacoesAdmin({ onToast }: Props) {
             ['futuras', 'Próximas'],
             ['hoje', 'Hoje'],
             ['pendentes', 'Pendentes'],
-            ['todas', 'Todas'],
+            ['calendario', 'Calendário'],
           ] as const
         ).map(([k, label]) => (
           <button
             key={k}
-            onClick={() => setFiltro(k)}
+            onClick={() => {
+              setFiltro(k);
+              if (k !== 'calendario') setSelectedDay(null);
+            }}
             className={`px-4 py-2 rounded-full text-sm font-bold border-2 transition ${
               filtro === k
                 ? 'bg-ink text-white border-ink'
@@ -145,7 +157,27 @@ export function AvaliacoesAdmin({ onToast }: Props) {
 
       {loading && <div className="text-ink-soft text-sm">Carregando…</div>}
 
-      {!loading && filtered.length === 0 && (
+      {filtro === 'calendario' && (
+        <div className="mb-6">
+          <CalendarioAvaliacoes
+            avaliacoes={avaliacoes}
+            selectedDayIso={selectedDay}
+            onSelectDay={(iso) => setSelectedDay(iso)}
+          />
+          {selectedDay && filtered.length === 0 && (
+            <div className="text-center py-10 text-ink-soft">
+              <p className="text-sm">Nenhuma avaliação nesse dia.</p>
+            </div>
+          )}
+          {!selectedDay && (
+            <div className="text-center py-8 text-ink-soft text-sm">
+              Toca num dia colorido pra ver as avaliações.
+            </div>
+          )}
+        </div>
+      )}
+
+      {!loading && filtro !== 'calendario' && filtered.length === 0 && (
         <div className="text-center py-16 text-ink-soft">
           <div className="font-display text-3xl text-lulu-purple mb-2">
             Nenhuma avaliação 🩷

@@ -190,7 +190,7 @@ export function AppShell({ initialVales, portalBase }: Props) {
 
       <nav className="flex border-b-2 border-line mb-7 overflow-x-auto">
         <TabBtn active={view === 'nova'} onClick={() => switchView('nova')}>
-          Nova venda
+          Nova troca
         </TabBtn>
         <TabBtn active={view === 'vales'} onClick={() => switchView('vales')}>
           Consultar vales

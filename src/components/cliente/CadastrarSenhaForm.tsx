@@ -67,6 +67,9 @@ export function CadastrarSenhaForm({ onDone, onCancel }: Props) {
           className="lulu-input"
           minLength={6}
         />
+        <p className="text-xs text-ink-mute mt-1.5">
+          Mínimo de 6 caracteres.
+        </p>
       </div>
 
       <div>

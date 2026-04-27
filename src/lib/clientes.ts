@@ -1,5 +1,5 @@
 import { withClient, withTx } from './db';
-import { validateWhatsappBR } from './format';
+import { isValidCPF, validateWhatsappBR } from './format';
 import type { Cliente, ClienteComAgregados, ClienteAgregados, Vale, Transacao } from './types';
 import type { PoolClient } from 'pg';
 
@@ -201,6 +201,7 @@ export async function upsertClienteTx(
 ): Promise<Cliente> {
   const cpf = digitsOnly(input.cpf);
   if (cpf.length !== 11) throw new Error('CPF inválido.');
+  if (!isValidCPF(cpf)) throw new Error('CPF inválido — confere os dígitos.');
   if (!input.nome.trim()) throw new Error('Nome obrigatório.');
 
   const res = await client.query(

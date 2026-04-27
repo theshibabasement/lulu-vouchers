@@ -1,9 +1,9 @@
 'use client';
 
-import { useState, useEffect, type KeyboardEvent } from 'react';
+import { useState, useEffect, useRef, type KeyboardEvent } from 'react';
 import { Receipt } from './Receipt';
-import { maskCPFInput, maskBRLInput, parseBRL } from '@/lib/format';
-import type { Vale } from '@/lib/types';
+import { isValidCPF, maskCPFInput, maskBRLInput, parseBRL } from '@/lib/format';
+import type { Cliente, Vale } from '@/lib/types';
 
 interface Props {
   onCreated: (vale: Vale, mode: 'ambas' | 'cliente' | 'loja') => void;
@@ -16,11 +16,52 @@ export function NovaVendaForm({ onCreated, onError, portalBase }: Props) {
   const [cpf, setCpf] = useState('');
   const [valor, setValor] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [cpfErr, setCpfErr] = useState<string | null>(null);
+  const [lookingUp, setLookingUp] = useState(false);
+  const [foundClient, setFoundClient] = useState<string | null>(null);
+  const lastLookupRef = useRef<string>('');
+
+  // Quando CPF tem 11 dígitos e é válido, busca cliente já cadastrado
+  useEffect(() => {
+    const digits = cpf.replace(/\D/g, '');
+    if (digits.length !== 11) {
+      setCpfErr(null);
+      setFoundClient(null);
+      lastLookupRef.current = '';
+      return;
+    }
+    if (!isValidCPF(digits)) {
+      setCpfErr('CPF inválido — confere os dígitos.');
+      setFoundClient(null);
+      return;
+    }
+    setCpfErr(null);
+    if (digits === lastLookupRef.current) return;
+    lastLookupRef.current = digits;
+    const ac = new AbortController();
+    setLookingUp(true);
+    fetch(`/api/clientes/by-cpf?cpf=${digits}`, { signal: ac.signal })
+      .then((r) => r.json())
+      .then((j: { cliente?: Cliente | null }) => {
+        if (j.cliente) {
+          setFoundClient(j.cliente.nome);
+          // Auto-preenche nome só se vazio (não sobrescreve digitação)
+          if (!nome.trim()) setNome(j.cliente.nome);
+        } else {
+          setFoundClient(null);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLookingUp(false));
+    return () => ac.abort();
+  }, [cpf]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function submit(mode: 'ambas' | 'cliente' | 'loja') {
     if (submitting) return;
     if (!nome.trim()) return onError('Informe o nome do cliente.');
-    if (cpf.replace(/\D/g, '').length !== 11) return onError('CPF inválido.');
+    const cpfDigits = cpf.replace(/\D/g, '');
+    if (cpfDigits.length !== 11) return onError('CPF inválido.');
+    if (!isValidCPF(cpfDigits)) return onError('CPF inválido — confere os dígitos.');
     const v = parseBRL(valor);
     if (!(v > 0)) return onError('Informe um valor válido.');
 
@@ -29,7 +70,7 @@ export function NovaVendaForm({ onCreated, onError, portalBase }: Props) {
       const r = await fetch('/api/vales', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ nome: nome.trim(), cpf: cpf.trim(), valor: v }),
+        body: JSON.stringify({ nome: nome.trim(), cpf: cpfDigits, valor: v }),
       });
       const j = (await r.json()) as { vale?: Vale; error?: string };
       if (!r.ok || !j.vale) throw new Error(j.error || 'Falha ao criar vale.');
@@ -37,6 +78,7 @@ export function NovaVendaForm({ onCreated, onError, portalBase }: Props) {
       setNome('');
       setCpf('');
       setValor('');
+      setFoundClient(null);
     } catch (e) {
       onError((e as Error).message);
     } finally {
@@ -65,7 +107,7 @@ export function NovaVendaForm({ onCreated, onError, portalBase }: Props) {
   return (
     <div className="grid lg:grid-cols-2 gap-8 items-start">
       <section className="lulu-card p-7">
-        <h2 className="font-display text-2xl text-lulu-magenta mb-1">Dados da venda</h2>
+        <h2 className="font-display text-2xl text-lulu-magenta mb-1">Dados da troca</h2>
         <p className="text-sm text-ink-soft mb-5">
           Preencha os dados de quem está vendendo seus produtos seminovos. 🩷
         </p>
@@ -84,7 +126,19 @@ export function NovaVendaForm({ onCreated, onError, portalBase }: Props) {
           </div>
 
           <div>
-            <label className="lulu-label">CPF</label>
+            <label className="lulu-label flex items-center justify-between">
+              <span>CPF</span>
+              {lookingUp && (
+                <span className="text-[11px] font-normal normal-case tracking-normal text-ink-mute">
+                  buscando…
+                </span>
+              )}
+              {!lookingUp && foundClient && (
+                <span className="text-[11px] font-normal normal-case tracking-normal text-lulu-purple">
+                  ✓ cliente já cadastrado
+                </span>
+              )}
+            </label>
             <input
               inputMode="numeric"
               value={cpf}
@@ -92,8 +146,11 @@ export function NovaVendaForm({ onCreated, onError, portalBase }: Props) {
               onKeyDown={onKey}
               placeholder="000.000.000-00"
               maxLength={14}
-              className="lulu-input"
+              className={`lulu-input ${cpfErr ? 'border-lulu-heart-red focus:border-lulu-heart-red focus:ring-lulu-heart-red/15' : ''}`}
             />
+            {cpfErr && (
+              <p className="text-xs text-lulu-heart-red mt-1.5">{cpfErr}</p>
+            )}
           </div>
 
           <div>

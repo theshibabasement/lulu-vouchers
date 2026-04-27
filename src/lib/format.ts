@@ -38,6 +38,29 @@ export function formatCPF(raw: string): string {
   return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
 }
 
+/**
+ * Valida CPF brasileiro pelos dígitos verificadores.
+ * Aceita formatado ou só dígitos.
+ */
+export function isValidCPF(raw: string): boolean {
+  const d = (raw || '').replace(/\D/g, '');
+  if (d.length !== 11) return false;
+  // Rejeita sequências repetidas (000.000.000-00, 111.111.111-11 etc)
+  if (/^(\d)\1+$/.test(d)) return false;
+
+  let sum = 0;
+  for (let i = 0; i < 9; i++) sum += parseInt(d[i], 10) * (10 - i);
+  let dv1 = (sum * 10) % 11;
+  if (dv1 === 10) dv1 = 0;
+  if (dv1 !== parseInt(d[9], 10)) return false;
+
+  sum = 0;
+  for (let i = 0; i < 10; i++) sum += parseInt(d[i], 10) * (11 - i);
+  let dv2 = (sum * 10) % 11;
+  if (dv2 === 10) dv2 = 0;
+  return dv2 === parseInt(d[10], 10);
+}
+
 export function formatDateTime(iso: string): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, '0');
