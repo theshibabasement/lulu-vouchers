@@ -70,7 +70,7 @@
 .receipt .brand {
   font-family: 'Baloo 2', 'Fredoka', sans-serif;
   text-align: center;
-  font-size: 18pt;
+  font-size: 20pt;
   font-weight: 800;
   letter-spacing: -0.01em;
   color: #9B6FD4;
@@ -79,17 +79,17 @@
 .receipt .brand-sub {
   text-align: center; font-size: 9pt;
   letter-spacing: 0.22em; text-transform: uppercase;
-  margin-bottom: 10px;
+  margin-bottom: 12px;
 }
-.receipt .divider { border: none; border-top: 1px dashed #000; margin: 8px 0; }
-.receipt .field-line { margin-bottom: 6px; }
+.receipt .divider { border: none; border-top: 1px dashed #000; margin: 10px 0; }
+.receipt .field-line { margin-bottom: 7px; }
 .receipt .field-line .lbl { font-weight: 700; }
-.receipt p { margin-bottom: 8px; text-align: justify; hyphens: auto; }
-.receipt .date { margin-top: 12px; font-size: 10pt; text-align: center; }
-.receipt .sign { margin-top: 22px; text-align: center; font-size: 9.5pt; }
+.receipt p { margin-bottom: 9px; text-align: justify; hyphens: auto; }
+.receipt .date { margin-top: 14px; font-size: 10pt; text-align: center; }
+.receipt .sign { margin-top: 28px; text-align: center; font-size: 9.5pt; }
 .receipt .sign .line { border-top: 1px solid #000; margin: 0 auto 4px; width: 80%; }
 .receipt .footer {
-  margin-top: 16px; text-align: center;
+  margin-top: 18px; text-align: center;
   font-size: 8.5pt; letter-spacing: 0.14em; text-transform: uppercase;
   color: #444;
 }
@@ -98,17 +98,55 @@
   text-transform: uppercase; color: #555;
   margin-top: 4px; margin-bottom: 6px;
 }
-.receipt .barcode { margin-top: 14px; text-align: center; }
-.receipt .barcode svg {
+
+/* Códigos: QR + CODE128 lado a lado */
+.receipt .codes { margin-top: 14px; }
+.receipt .codes-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6mm;
+}
+.receipt .qr-block {
+  text-align: center;
+  flex: 0 0 auto;
+}
+.receipt .qr-canvas {
+  display: block;
+  width: 28mm;
+  height: 28mm;
+}
+.receipt .qr-caption {
+  font-size: 7.5pt;
+  letter-spacing: 0.05em;
+  margin-top: 2px;
+  font-weight: 700;
+  text-align: center;
+  max-width: 28mm;
+  line-height: 1.2;
+}
+.receipt .barcode-block {
+  flex: 1 1 auto;
+  text-align: center;
+  min-width: 0;
+}
+.receipt .barcode-svg {
   display: block;
   margin: 0 auto;
   max-width: 100%;
   height: auto;
 }
-.receipt .barcode .code-label {
+.receipt .barcode-block .code-label {
   font-family: 'JetBrains Mono', monospace;
   font-size: 9pt; margin-top: 2px;
   letter-spacing: 0.06em; font-weight: 700;
+}
+.receipt .portal-url {
+  text-align: center;
+  margin-top: 8px;
+  font-size: 8.5pt;
+  font-family: 'JetBrains Mono', monospace;
+  word-break: break-all;
 }
 
 /* ------- Print ------- */
@@ -120,7 +158,9 @@
 .print-area { display: none; }
 
 @media print {
-  @page { size: 80mm auto; margin: 0; }
+  /* MP-4200 TH: melhor qualidade em 80mm × 300mm. `auto` deixa altura crescer
+     conforme conteúdo, e cortar entre vias usa o cut after page. */
+  @page { size: 80mm 300mm; margin: 0; }
   html, body {
     width: 80mm;
     background: #fff !important;
@@ -138,10 +178,14 @@
     top: 0;
     width: 80mm;
   }
+  .receipt {
+    font-size: 11.5pt;
+    line-height: 1.5;
+  }
   .receipt .brand { color: #000 !important; }
   .print-receipt {
     width: 80mm;
-    padding: 4mm 5mm 6mm;
+    padding: 6mm 6mm 8mm;
     box-sizing: border-box;
     page-break-after: always;
     break-after: page;

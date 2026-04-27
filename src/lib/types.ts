@@ -11,6 +11,8 @@ export interface Transacao {
 export interface Vale {
   id: string;
   clienteId?: number | null;
+  /** Token do cliente — incluído pra montar QR do recibo. Não exposto pra cliente externo. */
+  portalToken?: string | null;
   nome: string;
   cpf: string;
   valorOriginal: number;
@@ -30,6 +32,9 @@ export interface Cliente {
   endereco?: string | null;
   cidade?: string | null;
   observacoes?: string | null;
+  portalToken?: string | null;
+  temSenha?: boolean;
+  portalAtivadoEm?: string | null;
   criadoEm: string;
   atualizadoEm: string;
 }
@@ -45,4 +50,27 @@ export interface ClienteAgregados {
 
 export interface ClienteComAgregados extends Cliente {
   agregados: ClienteAgregados;
+}
+
+export type AvaliacaoStatus =
+  | 'pendente'
+  | 'confirmada'
+  | 'realizada'
+  | 'cancelada'
+  | 'no_show';
+
+export interface Avaliacao {
+  id: number;
+  clienteId: number | null;
+  nome: string;
+  cpf?: string | null;
+  whatsapp?: string | null;
+  dataHora: string; // ISO
+  qtdPecas?: number | null;
+  tamanhos: string[];
+  observacoes?: string | null;
+  status: AvaliacaoStatus;
+  valeId?: string | null;
+  criadoEm: string;
+  atualizadoEm: string;
 }

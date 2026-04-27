@@ -8,9 +8,10 @@ import type { Vale } from '@/lib/types';
 interface Props {
   onCreated: (vale: Vale, mode: 'ambas' | 'cliente' | 'loja') => void;
   onError: (msg: string) => void;
+  portalBase: string;
 }
 
-export function NovaVendaForm({ onCreated, onError }: Props) {
+export function NovaVendaForm({ onCreated, onError, portalBase }: Props) {
   const [nome, setNome] = useState('');
   const [cpf, setCpf] = useState('');
   const [valor, setValor] = useState('');
@@ -50,13 +51,14 @@ export function NovaVendaForm({ onCreated, onError }: Props) {
     }
   }
 
-  // Live preview data
+  // Live preview data — sem token (QR só aparece após criar)
   const previewData = {
     id: 'LB' + '0'.repeat(10),
     nome: nome.trim(),
     cpf: cpf.trim(),
     valorOriginal: parseBRL(valor),
     criadoEm: new Date().toISOString(),
+    portalToken: null,
   };
 
   return (
@@ -146,7 +148,12 @@ export function NovaVendaForm({ onCreated, onError }: Props) {
           <span className="flex-1 h-px bg-line"></span>
         </div>
         <div className="bg-white max-w-[340px] mx-auto p-5 rounded shadow-lg border-2 border-line">
-          <Receipt data={previewData} via="cliente" barcodeOpts={{ width: 1.4, height: 36 }} />
+          <Receipt
+            data={previewData}
+            via="cliente"
+            portalBase={portalBase}
+            barcodeOpts={{ width: 1.4, height: 36 }}
+          />
         </div>
       </aside>
     </div>

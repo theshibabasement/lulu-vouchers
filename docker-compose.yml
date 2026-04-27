@@ -26,6 +26,7 @@ services:
       AUTH_USER: ${AUTH_USER}
       AUTH_PASSWORD: ${AUTH_PASSWORD}
       AUTH_SECRET: ${AUTH_SECRET}
+      PORTAL_BASE_URL: ${PORTAL_BASE_URL}
     volumes:
       - lulu_appdata:/data
     expose:

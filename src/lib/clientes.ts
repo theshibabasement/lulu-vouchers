@@ -12,6 +12,9 @@ function rowToCliente(r: Record<string, unknown>): Cliente {
     endereco: (r.endereco as string | null) ?? null,
     cidade: (r.cidade as string | null) ?? null,
     observacoes: (r.observacoes as string | null) ?? null,
+    portalToken: (r.portal_token as string | null) ?? null,
+    temSenha: !!(r.senha_hash as string | null),
+    portalAtivadoEm: r.portal_ativado_em ? (r.portal_ativado_em as Date).toISOString() : null,
     criadoEm: (r.criado_em as Date).toISOString(),
     atualizadoEm: (r.atualizado_em as Date).toISOString(),
   };
@@ -19,6 +22,7 @@ function rowToCliente(r: Record<string, unknown>): Cliente {
 
 const SELECT_COLS = `
   id, cpf, nome, whatsapp, email, endereco, cidade, observacoes,
+  portal_token, senha_hash, portal_ativado_em,
   criado_em, atualizado_em
 `;
 
@@ -27,6 +31,7 @@ export async function listClientesComAgregados(): Promise<ClienteComAgregados[]>
     const res = await c.query(`
       SELECT
         c.id, c.cpf, c.nome, c.whatsapp, c.email, c.endereco, c.cidade, c.observacoes,
+        c.portal_token, c.senha_hash, c.portal_ativado_em,
         c.criado_em, c.atualizado_em,
         COALESCE(SUM(v.valor_original) FILTER (WHERE v.deletado_em IS NULL), 0) AS total_emitido,
         COALESCE(SUM(v.valor_original - v.saldo) FILTER (WHERE v.deletado_em IS NULL), 0) AS total_abatido,
@@ -78,10 +83,12 @@ export async function getClienteByCpf(cpf: string): Promise<Cliente | null> {
 export async function getClienteVales(clienteId: number): Promise<Vale[]> {
   return withClient(async (c) => {
     const vRes = await c.query(
-      `SELECT id, cliente_id, nome, cpf, valor_original, saldo, status, criado_em, deletado_em
-       FROM vales
-       WHERE cliente_id = $1 AND deletado_em IS NULL
-       ORDER BY criado_em DESC`,
+      `SELECT v.id, v.cliente_id, v.nome, v.cpf, v.valor_original, v.saldo, v.status,
+              v.criado_em, v.deletado_em, cl.portal_token
+       FROM vales v
+       LEFT JOIN clientes cl ON cl.id = v.cliente_id
+       WHERE v.cliente_id = $1 AND v.deletado_em IS NULL
+       ORDER BY v.criado_em DESC`,
       [clienteId],
     );
     if (vRes.rows.length === 0) return [];
@@ -105,6 +112,7 @@ export async function getClienteVales(clienteId: number): Promise<Vale[]> {
     return vRes.rows.map((r) => ({
       id: r.id as string,
       clienteId: r.cliente_id ? Number(r.cliente_id) : null,
+      portalToken: (r.portal_token as string | null) ?? null,
       nome: r.nome as string,
       cpf: r.cpf as string,
       valorOriginal: Number(r.valor_original),
@@ -151,8 +159,8 @@ export async function upsertClienteTx(
 
   const res = await client.query(
     `
-    INSERT INTO clientes (cpf, nome, whatsapp, email, endereco, cidade, observacoes)
-    VALUES ($1, $2, $3, $4, $5, $6, $7)
+    INSERT INTO clientes (cpf, nome, whatsapp, email, endereco, cidade, observacoes, portal_token)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, encode(gen_random_bytes(18), 'base64'))
     ON CONFLICT (cpf) DO UPDATE SET
       nome          = EXCLUDED.nome,
       whatsapp      = COALESCE(EXCLUDED.whatsapp,    clientes.whatsapp),
@@ -160,6 +168,7 @@ export async function upsertClienteTx(
       endereco      = COALESCE(EXCLUDED.endereco,    clientes.endereco),
       cidade        = COALESCE(EXCLUDED.cidade,      clientes.cidade),
       observacoes   = COALESCE(EXCLUDED.observacoes, clientes.observacoes),
+      portal_token  = COALESCE(clientes.portal_token, encode(gen_random_bytes(18), 'base64')),
       atualizado_em = NOW()
     RETURNING ${SELECT_COLS}
     `,

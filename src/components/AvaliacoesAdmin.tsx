@@ -1,0 +1,260 @@
+'use client';
+
+import { useEffect, useMemo, useState } from 'react';
+import { formatDate, formatDateTime, whatsappLink } from '@/lib/format';
+import type { Avaliacao, AvaliacaoStatus } from '@/lib/types';
+
+const STATUS_LABEL: Record<AvaliacaoStatus, string> = {
+  pendente: 'Pendente',
+  confirmada: 'Confirmada',
+  realizada: 'Realizada',
+  cancelada: 'Cancelada',
+  no_show: 'Não compareceu',
+};
+
+const STATUS_TONE: Record<AvaliacaoStatus, string> = {
+  pendente: 'bg-lulu-yellow text-ink',
+  confirmada: 'bg-lulu-mint text-ink',
+  realizada: 'bg-lulu-purple-soft text-lulu-purple',
+  cancelada: 'bg-lulu-cheek-pink text-lulu-heart-red',
+  no_show: 'bg-lulu-cheek-pink text-lulu-heart-red',
+};
+
+interface Props {
+  onToast: (msg: string, kind?: 'success' | 'error') => void;
+}
+
+export function AvaliacoesAdmin({ onToast }: Props) {
+  const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filtro, setFiltro] = useState<'futuras' | 'todas' | 'pendentes' | 'hoje'>('futuras');
+
+  async function load() {
+    setLoading(true);
+    try {
+      const r = await fetch('/api/avaliacoes', { cache: 'no-store' });
+      const j = (await r.json()) as { avaliacoes: Avaliacao[] };
+      setAvaliacoes(j.avaliacoes ?? []);
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    load();
+  }, []);
+
+  const filtered = useMemo(() => {
+    const now = Date.now();
+    switch (filtro) {
+      case 'pendentes':
+        return avaliacoes.filter((a) => a.status === 'pendente');
+      case 'hoje': {
+        const start = new Date();
+        start.setHours(0, 0, 0, 0);
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+        return avaliacoes.filter((a) => {
+          const t = new Date(a.dataHora).getTime();
+          return t >= start.getTime() && t <= end.getTime();
+        });
+      }
+      case 'todas':
+        return avaliacoes;
+      case 'futuras':
+      default:
+        return avaliacoes.filter((a) => new Date(a.dataHora).getTime() >= now - 1000 * 60 * 60);
+    }
+  }, [avaliacoes, filtro]);
+
+  // Agrupa por dia
+  const grouped = useMemo(() => {
+    const map = new Map<string, Avaliacao[]>();
+    for (const a of filtered) {
+      const key = formatDate(a.dataHora);
+      const list = map.get(key) ?? [];
+      list.push(a);
+      map.set(key, list);
+    }
+    return [...map.entries()];
+  }, [filtered]);
+
+  async function setStatus(a: Avaliacao, status: AvaliacaoStatus) {
+    try {
+      const r = await fetch(`/api/avaliacoes/${a.id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ status }),
+      });
+      const j = (await r.json()) as { error?: string };
+      if (!r.ok) throw new Error(j.error || 'Falha.');
+      onToast(`Status atualizado: ${STATUS_LABEL[status]}`, 'success');
+      load();
+    } catch (e) {
+      onToast((e as Error).message, 'error');
+    }
+  }
+
+  async function remover(a: Avaliacao) {
+    if (!confirm(`Remover agendamento de ${a.nome} em ${formatDateTime(a.dataHora)}?`)) return;
+    try {
+      const r = await fetch(`/api/avaliacoes/${a.id}`, { method: 'DELETE' });
+      if (!r.ok) {
+        const j = (await r.json()) as { error?: string };
+        throw new Error(j.error || 'Falha.');
+      }
+      onToast('Removido.', 'success');
+      load();
+    } catch (e) {
+      onToast((e as Error).message, 'error');
+    }
+  }
+
+  return (
+    <>
+      <div className="flex flex-wrap gap-2 mb-5">
+        {(
+          [
+            ['futuras', 'Próximas'],
+            ['hoje', 'Hoje'],
+            ['pendentes', 'Pendentes'],
+            ['todas', 'Todas'],
+          ] as const
+        ).map(([k, label]) => (
+          <button
+            key={k}
+            onClick={() => setFiltro(k)}
+            className={`px-4 py-2 rounded-full text-sm font-bold border-2 transition ${
+              filtro === k
+                ? 'bg-ink text-white border-ink'
+                : 'bg-paper text-ink-soft border-line hover:border-ink-mute'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
+        <button
+          onClick={load}
+          className="ml-auto px-4 py-2 rounded-full text-sm font-bold border-2 border-line bg-paper text-ink-soft hover:border-ink-mute transition"
+        >
+          ↻ Recarregar
+        </button>
+      </div>
+
+      {loading && <div className="text-ink-soft text-sm">Carregando…</div>}
+
+      {!loading && filtered.length === 0 && (
+        <div className="text-center py-16 text-ink-soft">
+          <div className="font-display text-3xl text-lulu-purple mb-2">
+            Nenhuma avaliação 🩷
+          </div>
+          <p className="text-sm">Os agendamentos aparecem aqui.</p>
+        </div>
+      )}
+
+      <div className="space-y-6">
+        {grouped.map(([day, items]) => (
+          <div key={day}>
+            <h3 className="font-display text-xl text-lulu-purple mb-3 sticky top-0 bg-paper-sparkle py-2 z-[1]">
+              {day}
+            </h3>
+            <div className="space-y-2">
+              {items.map((a) => (
+                <AvaliacaoCard
+                  key={a.id}
+                  a={a}
+                  onStatus={(s) => setStatus(a, s)}
+                  onRemove={() => remover(a)}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </>
+  );
+}
+
+function AvaliacaoCard({
+  a,
+  onStatus,
+  onRemove,
+}: {
+  a: Avaliacao;
+  onStatus: (s: AvaliacaoStatus) => void;
+  onRemove: () => void;
+}) {
+  const wa = a.whatsapp ? whatsappLink(a.whatsapp) : null;
+  const hora = new Date(a.dataHora).toLocaleTimeString('pt-BR', {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+
+  return (
+    <div className="bg-paper rounded-md p-4 border-2 border-line">
+      <div className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-baseline gap-3 flex-wrap">
+            <span className="font-display text-xl font-bold text-lulu-purple">{hora}</span>
+            <span className="font-bold text-ink truncate">{a.nome}</span>
+          </div>
+          <div className="text-xs text-ink-soft mt-0.5">
+            {a.cpf ? a.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : 'sem CPF'}
+            {a.qtdPecas ? ` · ${a.qtdPecas} peças` : ''}
+          </div>
+          {a.tamanhos.length > 0 && (
+            <div className="flex flex-wrap gap-1 mt-2">
+              {a.tamanhos.map((t) => (
+                <span key={t} className="text-[10px] font-bold px-2 py-0.5 rounded bg-paper-tint border border-line">
+                  {t}
+                </span>
+              ))}
+            </div>
+          )}
+          {a.observacoes && (
+            <div className="text-xs text-ink-soft mt-2 italic">"{a.observacoes}"</div>
+          )}
+        </div>
+        <span className={`lulu-pill ${STATUS_TONE[a.status]}`}>
+          {STATUS_LABEL[a.status]}
+        </span>
+      </div>
+
+      <div className="flex flex-wrap gap-2 mt-3">
+        {a.status === 'pendente' && (
+          <button onClick={() => onStatus('confirmada')} className="text-xs font-bold px-3 py-1.5 rounded-full border-2 border-lulu-mint bg-paper text-ink hover:bg-lulu-mint/30 transition">
+            Confirmar
+          </button>
+        )}
+        {(a.status === 'pendente' || a.status === 'confirmada') && (
+          <>
+            <button onClick={() => onStatus('realizada')} className="text-xs font-bold px-3 py-1.5 rounded-full border-2 border-lulu-purple-soft bg-paper text-lulu-purple hover:bg-lulu-purple-soft/30 transition">
+              Marcar como realizada
+            </button>
+            <button onClick={() => onStatus('no_show')} className="text-xs font-bold px-3 py-1.5 rounded-full border-2 border-lulu-cheek-pink bg-paper text-lulu-heart-red hover:bg-lulu-cheek-pink/30 transition">
+              Não compareceu
+            </button>
+            <button onClick={() => onStatus('cancelada')} className="text-xs font-bold px-3 py-1.5 rounded-full border-2 border-line bg-paper text-ink-soft hover:bg-paper-tint transition">
+              Cancelar
+            </button>
+          </>
+        )}
+        {wa && (
+          <a
+            href={wa}
+            target="_blank"
+            rel="noreferrer"
+            className="text-xs font-bold px-3 py-1.5 rounded-full border-2 border-ink/15 bg-lulu-mint text-ink hover:border-ink/40 transition ml-auto"
+          >
+            WhatsApp
+          </a>
+        )}
+        <button onClick={onRemove} className="text-xs font-bold px-3 py-1.5 rounded-full border-2 border-line bg-paper text-ink-mute hover:text-lulu-heart-red hover:border-lulu-heart-red transition">
+          Remover
+        </button>
+      </div>
+    </div>
+  );
+}

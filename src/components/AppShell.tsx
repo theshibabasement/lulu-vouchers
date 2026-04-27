@@ -7,20 +7,23 @@ import { ValesList } from './ValesList';
 import { ValeDetail } from './ValeDetail';
 import { ClientesList } from './ClientesList';
 import { ClienteDetail } from './ClienteDetail';
+import { AvaliacoesAdmin } from './AvaliacoesAdmin';
 import { PrintArea } from './PrintArea';
+import { WhatsAppShareModal } from './WhatsAppShareModal';
 import { ToastStack, type ToastMsg } from './Toast';
 import type { Vale, ClienteComAgregados } from '@/lib/types';
 import type { ReceiptData } from './Receipt';
 
 interface Props {
   initialVales: Vale[];
+  portalBase: string;
 }
 
-type View = 'nova' | 'vales' | 'clientes';
+type View = 'nova' | 'vales' | 'clientes' | 'avaliacoes';
 type PrintMode = 'ambas' | 'cliente' | 'loja';
 type Filter = 'all' | 'active' | 'used' | 'deleted';
 
-export function AppShell({ initialVales }: Props) {
+export function AppShell({ initialVales, portalBase }: Props) {
   const [view, setView] = useState<View>('nova');
   const [vales, setVales] = useState<Vale[]>(initialVales);
   const [clientes, setClientes] = useState<ClienteComAgregados[]>([]);
@@ -28,6 +31,7 @@ export function AppShell({ initialVales }: Props) {
   const [detail, setDetail] = useState<Vale | null>(null);
   const [clienteDetailId, setClienteDetailId] = useState<number | null>(null);
   const [print, setPrint] = useState<{ data: ReceiptData; mode: PrintMode } | null>(null);
+  const [shareVale, setShareVale] = useState<Vale | null>(null);
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
 
   const pushToast = useCallback(
@@ -89,6 +93,8 @@ export function AppShell({ initialVales }: Props) {
     (vale: Vale, mode: PrintMode) => {
       setVales((cur) => [vale, ...cur]);
       setPrint({ data: vale, mode });
+      // Guarda pra abrir o modal de WhatsApp depois do afterprint
+      setShareVale(vale);
       pushToast('Vale criado e enviado para impressão', 'success', vale.id);
     },
     [pushToast],
@@ -196,12 +202,16 @@ export function AppShell({ initialVales }: Props) {
             {clientes.length}
           </span>
         </TabBtn>
+        <TabBtn active={view === 'avaliacoes'} onClick={() => switchView('avaliacoes')}>
+          Avaliações
+        </TabBtn>
       </nav>
 
       {view === 'nova' && (
         <NovaVendaForm
           onCreated={handleCreated}
           onError={(m) => pushToast(m, 'error')}
+          portalBase={portalBase}
         />
       )}
 
@@ -219,6 +229,10 @@ export function AppShell({ initialVales }: Props) {
 
       {view === 'clientes' && (
         <ClientesList clientes={clientes} onOpen={(id) => setClienteDetailId(id)} />
+      )}
+
+      {view === 'avaliacoes' && (
+        <AvaliacoesAdmin onToast={(m, k) => pushToast(m, k)} />
       )}
 
       <ValeDetail
@@ -253,7 +267,14 @@ export function AppShell({ initialVales }: Props) {
       <PrintArea
         data={print?.data ?? null}
         mode={print?.mode ?? null}
+        portalBase={portalBase}
         onAfterPrint={() => setPrint(null)}
+      />
+
+      <WhatsAppShareModal
+        vale={shareVale}
+        portalBase={portalBase}
+        onClose={() => setShareVale(null)}
       />
 
       <ToastStack toasts={toasts} onDismiss={dismiss} />

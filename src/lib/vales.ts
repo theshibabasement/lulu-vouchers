@@ -7,6 +7,7 @@ function rowToVale(r: Record<string, unknown>): Vale {
   return {
     id: r.id as string,
     clienteId: r.cliente_id ? Number(r.cliente_id) : null,
+    portalToken: (r.portal_token as string | null) ?? null,
     nome: r.nome as string,
     cpf: r.cpf as string,
     valorOriginal: Number(r.valor_original),
@@ -40,7 +41,11 @@ function generateCode(existing: Set<string>): string {
   throw new Error('Não foi possível gerar código único');
 }
 
-const VALE_COLS = `id, cliente_id, nome, cpf, valor_original, saldo, status, criado_em, deletado_em`;
+const VALE_COLS = `
+  v.id, v.cliente_id, v.nome, v.cpf, v.valor_original, v.saldo, v.status,
+  v.criado_em, v.deletado_em, c.portal_token
+`;
+const VALE_FROM = `FROM vales v LEFT JOIN clientes c ON c.id = v.cliente_id`;
 
 export interface ListValesOptions {
   includeDeleted?: boolean;
@@ -49,9 +54,9 @@ export interface ListValesOptions {
 export async function listVales(opts: ListValesOptions = {}): Promise<Vale[]> {
   try {
     return await withClient(async (c) => {
-      const where = opts.includeDeleted ? '' : 'WHERE deletado_em IS NULL';
+      const where = opts.includeDeleted ? '' : 'WHERE v.deletado_em IS NULL';
       const vRes = await c.query(
-        `SELECT ${VALE_COLS} FROM vales ${where} ORDER BY criado_em DESC`,
+        `SELECT ${VALE_COLS} ${VALE_FROM} ${where} ORDER BY v.criado_em DESC`,
       );
       const vales = vRes.rows.map(rowToVale);
       if (vales.length === 0) return vales;
@@ -79,7 +84,7 @@ export async function getVale(id: string): Promise<Vale | null> {
   try {
     return await withClient(async (c) => {
       const vRes = await c.query(
-        `SELECT ${VALE_COLS} FROM vales WHERE id = $1`,
+        `SELECT ${VALE_COLS} ${VALE_FROM} WHERE v.id = $1`,
         [id],
       );
       if (vRes.rows.length === 0) return null;
@@ -148,6 +153,7 @@ export async function createVale(input: CreateValeInput): Promise<Vale> {
     return {
       id: code,
       clienteId: cliente.id,
+      portalToken: cliente.portalToken ?? null,
       nome: nome.trim(),
       cpf: cpf.trim(),
       valorOriginal: valor,
@@ -204,7 +210,7 @@ export async function abaterVale(
     );
 
     const vRes = await c.query(
-      `SELECT ${VALE_COLS} FROM vales WHERE id = $1`,
+      `SELECT ${VALE_COLS} ${VALE_FROM} WHERE v.id = $1`,
       [id],
     );
     const txRes = await c.query(

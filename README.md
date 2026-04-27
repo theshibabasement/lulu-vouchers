@@ -7,12 +7,32 @@ Persistência em Postgres + fallback JSONL local. Deploy via Dokploy/Traefik.
 
 ## Stack
 
-- **Next.js 15** (App Router, output `standalone`)
+- **Next.js 16** (App Router, output `standalone`)
 - **React 19** + **Tailwind 3** com tokens do Lulu Arteira Design System
-- **Postgres 16** (dados de vales e transações)
+- **Postgres 16** + extensão `pgcrypto` para tokens
 - **JSONL local** (`/data/vales.jsonl` + `transacoes.jsonl`) como espelho/fallback
-- **iron-session** para login simples por cookie
-- **JsBarcode** (CODE128) para o código dos vales
+- **iron-session** + **bcryptjs** (senhas dos clientes)
+- **JsBarcode** (CODE128 — leitor da loja) + **qrcode** (QR Code — portal cliente)
+
+## Funcionalidades
+
+**Admin (operação na loja):**
+- Nova venda com pré-visualização do recibo
+- Lista de vales com filtros (todos/ativos/esgotados/excluídos)
+- Detalhe do vale: abatimento, reimpressão, soft delete
+- Lista de clientes com agregados (total emitido, saldo, qtd. trocas, última)
+- Detalhe do cliente: dados editáveis + lista de vales + WhatsApp direto
+- Avaliações agendadas: lista por dia, mudar status, contato WhatsApp
+
+**Portal cliente** (`/cliente`):
+- Login automático via QR code do recibo
+- Login manual com CPF + senha (após cadastro)
+- Saldo total e detalhe de cada vale (QR + barcode + histórico)
+- Agendar avaliação
+- Cadastrar senha pra acessar de qualquer celular
+
+**Público:**
+- `/agendar` — formulário público de agendamento
 
 ## Estrutura
 

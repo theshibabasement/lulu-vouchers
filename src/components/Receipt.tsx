@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import JsBarcode from 'jsbarcode';
+import QRCode from 'qrcode';
 import { formatBRL, formatLongDate } from '@/lib/format';
 
 export interface ReceiptData {
@@ -10,21 +11,28 @@ export interface ReceiptData {
   cpf: string;
   valorOriginal: number;
   criadoEm?: string;
+  portalToken?: string | null;
 }
 
 interface Props {
   data: ReceiptData;
   via: 'cliente' | 'loja';
+  /** URL pública base do portal — usada pra montar o QR. */
+  portalBase?: string;
+  /** Tamanhos pra ajustar quando renderizar pra impressão grande vs preview. */
   barcodeOpts?: { width?: number; height?: number };
+  qrSize?: number;
 }
 
-export function Receipt({ data, via, barcodeOpts }: Props) {
-  const svgRef = useRef<SVGSVGElement | null>(null);
+export function Receipt({ data, via, portalBase, barcodeOpts, qrSize }: Props) {
+  const barcodeRef = useRef<SVGSVGElement | null>(null);
+  const qrCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
+  // Barcode CODE128 — pra leitor da loja (sempre na via cliente)
   useEffect(() => {
-    if (via !== 'cliente' || !svgRef.current) return;
+    if (via !== 'cliente' || !barcodeRef.current) return;
     try {
-      JsBarcode(svgRef.current, data.id || 'LB0000000000', {
+      JsBarcode(barcodeRef.current, data.id || 'LB0000000000', {
         format: 'CODE128',
         width: barcodeOpts?.width ?? 1.6,
         height: barcodeOpts?.height ?? 44,
@@ -38,11 +46,25 @@ export function Receipt({ data, via, barcodeOpts }: Props) {
     }
   }, [data.id, via, barcodeOpts?.width, barcodeOpts?.height]);
 
+  // QR Code — link pro portal cliente
+  useEffect(() => {
+    if (via !== 'cliente' || !qrCanvasRef.current) return;
+    const url = buildPortalUrl(portalBase, data.portalToken);
+    if (!url) return;
+    QRCode.toCanvas(qrCanvasRef.current, url, {
+      width: qrSize ?? 140,
+      margin: 1,
+      color: { dark: '#000', light: '#fff' },
+      errorCorrectionLevel: 'M',
+    }).catch(() => {});
+  }, [data.portalToken, via, qrSize, portalBase]);
+
   const nome = data.nome || '_______________________________';
   const cpf = data.cpf || '_______________';
   const valor = data.valorOriginal > 0 ? formatBRL(data.valorOriginal) : '_______________';
   const id = data.id || 'LB••••••••••';
   const dateStr = formatLongDate(data.criadoEm);
+  const portalUrl = buildPortalUrl(portalBase, data.portalToken);
 
   return (
     <div className="receipt">
@@ -72,14 +94,42 @@ export function Receipt({ data, via, barcodeOpts }: Props) {
         <div className="line"></div>
         Assinatura do cliente
       </div>
+
       {via === 'cliente' && (
-        <div className="barcode">
-          <svg ref={svgRef}></svg>
-          <div className="code-label">Vale: {id}</div>
-        </div>
+        <>
+          <hr className="divider" />
+          <div className="codes">
+            <div className="codes-row">
+              {portalUrl && (
+                <div className="qr-block">
+                  <canvas ref={qrCanvasRef} className="qr-canvas"></canvas>
+                  <div className="qr-caption">Escaneia pra ver teu vale</div>
+                </div>
+              )}
+              <div className="barcode-block">
+                <svg ref={barcodeRef} className="barcode-svg"></svg>
+                <div className="code-label">Vale: {id}</div>
+              </div>
+            </div>
+            {portalUrl && (
+              <div className="portal-url">{stripHttp(portalUrl)}</div>
+            )}
+          </div>
+        </>
       )}
+
       <hr className="divider" />
       <div className="footer">Lulu Arteira · Brechó Infantil</div>
     </div>
   );
+}
+
+function buildPortalUrl(base: string | undefined, token: string | null | undefined): string | null {
+  if (!token) return null;
+  const root = (base || '').replace(/\/$/, '');
+  return `${root}/cliente/${encodeURIComponent(token)}`;
+}
+
+function stripHttp(url: string): string {
+  return url.replace(/^https?:\/\//, '');
 }
