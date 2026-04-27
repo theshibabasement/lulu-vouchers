@@ -75,7 +75,7 @@ export function HorariosConfig({ onToast }: Props) {
         />
       </Section>
 
-      <Section title="Override por dia da semana">
+      <Section title="Outros horários · por dia da semana">
         <p className="text-sm text-ink-soft mb-3">
           Use pra fechar dias inteiros (ex: segunda) ou definir horário diferente
           em algum dia recorrente. Sem configuração = usa o padrão.
@@ -119,7 +119,7 @@ export function HorariosConfig({ onToast }: Props) {
         </div>
       </Section>
 
-      <Section title="Override por data específica">
+      <Section title="Outros horários · por data específica">
         <p className="text-sm text-ink-soft mb-3">
           Pra fechar um dia específico (feriado, viagem) ou abrir horário
           diferente pontualmente.
@@ -154,7 +154,7 @@ export function HorariosConfig({ onToast }: Props) {
                 </div>
                 <button
                   onClick={async () => {
-                    if (!confirm(`Remover override de ${c.data}?`)) return;
+                    if (!confirm(`Remover horário específico de ${c.data}?`)) return;
                     try {
                       const r = await fetch(`/api/horarios/data/${c.data}`, {
                         method: 'DELETE',
