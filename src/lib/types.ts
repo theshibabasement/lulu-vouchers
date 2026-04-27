@@ -49,8 +49,16 @@ export interface ClienteAgregados {
   ultimaCompra?: string | null;
 }
 
+export type TagCor = 'magenta' | 'cyan' | 'yellow' | 'purple' | 'mint' | 'cheek' | 'ink';
+export interface ClienteTag {
+  id: number;
+  nome: string;
+  cor: TagCor;
+}
+
 export interface ClienteComAgregados extends Cliente {
   agregados: ClienteAgregados;
+  tags?: ClienteTag[];
 }
 
 export type AvaliacaoStatus =

@@ -1,5 +1,6 @@
 import { withClient, withTx } from './db';
 import { upsertClienteTxFull, digitsOnly } from './clientes';
+import { isDiaFechado } from './dias-fechados';
 import { validateWhatsappBR } from './format';
 import { getJanelasParaData, inJanela, spLocal } from './horarios';
 import type { Avaliacao, AvaliacaoStatus, Cliente } from './types';
@@ -109,9 +110,14 @@ export async function createAvaliacaoFull(input: CreateAvaliacaoInput): Promise<
     throw new Error('Agende com pelo menos 1 hora de antecedência.');
   }
 
+  // Bloqueia agendamento em dia fechado.
+  const sp = spLocal(input.dataHora);
+  if (await isDiaFechado(sp.dateStr)) {
+    throw new Error('Loja fechada nesse dia. Escolha outra data.');
+  }
+
   // Valida horário dentro das janelas configuradas (override por data,
   // depois por dia da semana, depois padrão).
-  const sp = spLocal(input.dataHora);
   const janelas = await getJanelasParaData(sp.dateStr);
   if (janelas.length === 0) {
     throw new Error('Lulu não tem horário disponível nesse dia.');

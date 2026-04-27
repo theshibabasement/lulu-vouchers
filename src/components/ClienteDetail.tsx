@@ -3,6 +3,8 @@
 import { useEffect, useState } from 'react';
 import { formatBRL, formatCPF, formatDate, formatDateTime, maskWhatsappInput, validateWhatsappBR, whatsappLink } from '@/lib/format';
 import type { Cliente, Vale } from '@/lib/types';
+import { TagsEditor } from './TagsEditor';
+import { MesclarClienteModal } from './MesclarClienteModal';
 
 interface Props {
   clienteId: number | null;
@@ -24,6 +26,7 @@ export function ClienteDetail({ clienteId, portalBase, onClose, onChanged, onOpe
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
+  const [showMesclar, setShowMesclar] = useState(false);
   const [form, setForm] = useState<Partial<Cliente>>({});
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -273,6 +276,28 @@ export function ClienteDetail({ clienteId, portalBase, onClose, onChanged, onOpe
               </Section>
 
               {!cliente.deletadoEm && (
+                <Section title="Tags">
+                  <TagsEditor clienteId={cliente.id} onChanged={onChanged} />
+                </Section>
+              )}
+
+              {!cliente.deletadoEm && (
+                <Section title="Mesclar com outro cadastro">
+                  <p className="text-xs text-ink-soft mb-3">
+                    Quando há dois cadastros pra mesma pessoa, mescla todos os
+                    vales/avaliações/tags pra um só. O outro fica como
+                    excluído.
+                  </p>
+                  <button
+                    onClick={() => setShowMesclar(true)}
+                    className="lulu-btn-secondary w-full"
+                  >
+                    Mesclar este cliente em outro
+                  </button>
+                </Section>
+              )}
+
+              {!cliente.deletadoEm && (
                 <Section title="Acesso ao portal">
                   <p className="text-xs text-ink-soft mb-3">
                     {cliente.temSenha
@@ -385,6 +410,18 @@ export function ClienteDetail({ clienteId, portalBase, onClose, onChanged, onOpe
           )}
         </div>
       </aside>
+
+      {showMesclar && cliente && (
+        <MesclarClienteModal
+          source={cliente}
+          onClose={() => setShowMesclar(false)}
+          onMesclado={() => {
+            setShowMesclar(false);
+            onChanged();
+            onClose();
+          }}
+        />
+      )}
     </>
   );
 }

@@ -24,6 +24,11 @@ const PUBLIC_PREFIXES = [
   '/favicon',
 ];
 
+/** GET público desses paths (precisa auth admin pra POST/PATCH/DELETE). */
+const PUBLIC_GET_ONLY = [
+  '/api/dias-fechados',
+];
+
 function isPublic(pathname: string): boolean {
   if (PUBLIC_EXACT.has(pathname)) return true;
   return PUBLIC_PREFIXES.some(
@@ -34,6 +39,15 @@ function isPublic(pathname: string): boolean {
 export function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
   if (isPublic(pathname)) return NextResponse.next();
+
+  // GET público em rotas específicas (mutações continuam exigindo auth)
+  if (req.method === 'GET') {
+    for (const p of PUBLIC_GET_ONLY) {
+      if (pathname === p || pathname.startsWith(p + '/')) {
+        return NextResponse.next();
+      }
+    }
+  }
 
   // Tudo o resto (ex: /admin, /api/vales, /api/clientes, /api/avaliacoes,
   // /api/auth/logout) exige cookie admin.

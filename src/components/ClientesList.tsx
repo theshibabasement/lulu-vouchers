@@ -1,11 +1,32 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { formatBRL, formatCPF, formatDate, whatsappLink } from '@/lib/format';
-import type { ClienteComAgregados } from '@/lib/types';
+import type { ClienteComAgregados, ClienteTag, TagCor } from '@/lib/types';
 
 type SortKey = 'nome' | 'qtd' | 'gasto' | 'recente';
 type ClientesFilter = 'all' | 'deleted';
+type ContatoFilter = 'todos' | 'sem-wa' | 'com-vale';
+
+const TAG_COLORS: Record<TagCor, string> = {
+  magenta: 'bg-lulu-magenta text-white',
+  cyan: 'bg-lulu-cyan text-white',
+  yellow: 'bg-lulu-yellow text-ink',
+  purple: 'bg-lulu-purple text-white',
+  mint: 'bg-lulu-mint text-ink',
+  cheek: 'bg-lulu-cheek-pink text-lulu-heart-red',
+  ink: 'bg-ink text-white',
+};
+
+function tempoDesde(iso: string): string {
+  const dias = Math.floor((Date.now() - new Date(iso).getTime()) / (1000 * 60 * 60 * 24));
+  if (dias < 1) return 'hoje';
+  if (dias < 30) return `há ${dias} dia${dias === 1 ? '' : 's'}`;
+  const meses = Math.floor(dias / 30);
+  if (meses < 12) return `há ${meses} m${meses === 1 ? 'ês' : 'eses'}`;
+  const anos = Math.floor(dias / 365);
+  return `há ${anos} ano${anos === 1 ? '' : 's'}`;
+}
 
 interface Props {
   clientes: ClienteComAgregados[];
@@ -17,6 +38,16 @@ interface Props {
 export function ClientesList({ clientes, onOpen, filter, onFilterChange }: Props) {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortKey>('nome');
+  const [contato, setContato] = useState<ContatoFilter>('todos');
+  const [tagFiltro, setTagFiltro] = useState<number | null>(null);
+  const [tagsExistentes, setTagsExistentes] = useState<ClienteTag[]>([]);
+
+  useEffect(() => {
+    fetch('/api/tags')
+      .then((r) => r.json())
+      .then((j: { tags?: ClienteTag[] }) => setTagsExistentes(j.tags ?? []))
+      .catch(() => {});
+  }, [clientes.length]);
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
@@ -25,6 +56,14 @@ export function ClientesList({ clientes, onOpen, filter, onFilterChange }: Props
       filter === 'deleted'
         ? clientes.filter((c) => !!c.deletadoEm)
         : clientes.filter((c) => !c.deletadoEm);
+    if (contato === 'sem-wa') {
+      list = list.filter((c) => !c.whatsapp);
+    } else if (contato === 'com-vale') {
+      list = list.filter((c) => c.agregados.qtdAtivos > 0);
+    }
+    if (tagFiltro !== null) {
+      list = list.filter((c) => (c.tags ?? []).some((t) => t.id === tagFiltro));
+    }
     if (q) {
       list = list.filter(
         (c) =>
@@ -50,7 +89,7 @@ export function ClientesList({ clientes, onOpen, filter, onFilterChange }: Props
       }
     });
     return sorted;
-  }, [clientes, query, sort, filter]);
+  }, [clientes, query, sort, filter, contato, tagFiltro]);
 
   return (
     <>
@@ -91,7 +130,7 @@ export function ClientesList({ clientes, onOpen, filter, onFilterChange }: Props
         </div>
       </div>
 
-      <div className="flex gap-1.5 mb-4">
+      <div className="flex gap-1.5 mb-3 flex-wrap">
         {(
           [
             ['all', 'Ativos'],
@@ -110,7 +149,57 @@ export function ClientesList({ clientes, onOpen, filter, onFilterChange }: Props
             {label}
           </button>
         ))}
+        {(
+          [
+            ['todos', 'Todos contatos'],
+            ['com-vale', 'Com vale ativo'],
+            ['sem-wa', 'Sem WhatsApp'],
+          ] as const
+        ).map(([k, label]) => (
+          <button
+            key={k}
+            onClick={() => setContato(k)}
+            className={`px-4 py-2 rounded-full text-xs font-bold border-2 transition ${
+              contato === k
+                ? 'bg-ink text-white border-ink'
+                : 'bg-paper text-ink-soft border-line hover:border-ink-mute'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
+
+      {tagsExistentes.length > 0 && (
+        <div className="flex gap-1.5 mb-4 flex-wrap items-center">
+          <span className="text-[11px] font-bold uppercase tracking-wider text-ink-soft">
+            Tags:
+          </span>
+          <button
+            onClick={() => setTagFiltro(null)}
+            className={`px-3 py-1 rounded-full text-xs font-bold border-2 transition ${
+              tagFiltro === null
+                ? 'bg-ink text-white border-ink'
+                : 'bg-paper text-ink-soft border-line hover:border-ink-mute'
+            }`}
+          >
+            Todas
+          </button>
+          {tagsExistentes.map((t) => (
+            <button
+              key={t.id}
+              onClick={() => setTagFiltro(tagFiltro === t.id ? null : t.id)}
+              className={`px-3 py-1 rounded-full text-xs font-bold border-2 transition ${
+                tagFiltro === t.id
+                  ? `${TAG_COLORS[t.cor]} border-ink`
+                  : 'bg-paper text-ink-soft border-line hover:border-ink-mute'
+              }`}
+            >
+              {t.nome}
+            </button>
+          ))}
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <div className="text-center py-16 text-ink-soft">
@@ -152,6 +241,8 @@ function ClienteCard({
 }) {
   const wa = cliente.whatsapp ? whatsappLink(cliente.whatsapp) : null;
   const isDeleted = !!cliente.deletadoEm;
+  const temAtivo = cliente.agregados.qtdAtivos > 0;
+  const semWa = !cliente.whatsapp && !isDeleted;
 
   return (
     <div
@@ -163,16 +254,39 @@ function ClienteCard({
         onClick={() => onOpen(cliente.id)}
         className="text-left w-full"
       >
-        {isDeleted && (
-          <div className="lulu-pill bg-lulu-cheek-pink text-lulu-heart-red mb-2">
-            Excluído
-          </div>
-        )}
+        <div className="flex flex-wrap gap-1 mb-2">
+          {isDeleted && (
+            <span className="lulu-pill bg-lulu-cheek-pink text-lulu-heart-red">
+              Excluído
+            </span>
+          )}
+          {temAtivo && !isDeleted && (
+            <span className="lulu-pill bg-lulu-mint text-ink">
+              Vale ativo
+            </span>
+          )}
+          {semWa && (
+            <span className="lulu-pill bg-lulu-cheek-pink text-lulu-heart-red">
+              Sem WhatsApp
+            </span>
+          )}
+          {(cliente.tags ?? []).map((t) => (
+            <span
+              key={t.id}
+              className={`lulu-pill ${TAG_COLORS[t.cor]}`}
+            >
+              {t.nome}
+            </span>
+          ))}
+        </div>
         <div className="font-bold text-base text-ink leading-tight">
           {cliente.nome}
         </div>
         <div className="text-sm text-ink-soft mt-0.5 font-mono">
           {formatCPF(cliente.cpf)}
+        </div>
+        <div className="text-[11px] text-ink-mute mt-0.5">
+          Cliente {tempoDesde(cliente.criadoEm)}
         </div>
 
         <div className="grid grid-cols-3 gap-2 mt-3 text-center">

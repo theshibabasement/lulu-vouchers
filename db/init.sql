@@ -128,6 +128,36 @@ CREATE INDEX IF NOT EXISTS idx_admins_username ON admins(username);
 CREATE INDEX IF NOT EXISTS idx_admins_ativo    ON admins(ativo);
 
 -- ====================================================
+-- Tags reutilizáveis (categoria de cliente, etc.)
+-- ====================================================
+CREATE TABLE IF NOT EXISTS tags (
+  id        BIGSERIAL PRIMARY KEY,
+  nome      TEXT NOT NULL UNIQUE,
+  cor       TEXT NOT NULL DEFAULT 'magenta'
+              CHECK (cor IN ('magenta','cyan','yellow','purple','mint','cheek','ink')),
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS cliente_tags (
+  cliente_id BIGINT NOT NULL REFERENCES clientes(id) ON DELETE CASCADE,
+  tag_id     BIGINT NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
+  criado_em  TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  PRIMARY KEY (cliente_id, tag_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_cliente_tags_cliente ON cliente_tags(cliente_id);
+CREATE INDEX IF NOT EXISTS idx_cliente_tags_tag     ON cliente_tags(tag_id);
+
+-- ====================================================
+-- Dias fechados (loja não atende — bloqueia agendamento online)
+-- ====================================================
+CREATE TABLE IF NOT EXISTS dias_fechados (
+  data      DATE PRIMARY KEY,
+  motivo    TEXT,
+  criado_em TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- ====================================================
 -- Config de horários de avaliação
 -- ====================================================
 -- tipo='padrao' (default p/ todos os dias)

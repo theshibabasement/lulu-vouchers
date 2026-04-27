@@ -9,6 +9,8 @@ interface Props {
   selectedDayIso: string | null;
   /** Quando true, dias com pelo menos uma avaliação sem WhatsApp ganham um pontinho de aviso. */
   marcarSemWhatsapp?: boolean;
+  /** Set de datas YYYY-MM-DD que estão fechadas (loja não atende). */
+  diasFechados?: Set<string>;
 }
 
 const DIAS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
@@ -40,6 +42,7 @@ export function CalendarioAvaliacoes({
   onSelectDay,
   selectedDayIso,
   marcarSemWhatsapp = true,
+  diasFechados,
 }: Props) {
   const today = useMemo(() => new Date(), []);
   const [cursor, setCursor] = useState<Date>(() => new Date(today.getFullYear(), today.getMonth(), 1));
@@ -139,6 +142,7 @@ export function CalendarioAvaliacoes({
           const tone = corDoDia(items);
           const isToday = dayKey(cell.date) === dayKey(today);
           const isSelected = selectedDayIso === cell.key;
+          const isFechado = diasFechados?.has(cell.key) ?? false;
           const temSemWa =
             marcarSemWhatsapp &&
             items.some(
@@ -153,22 +157,30 @@ export function CalendarioAvaliacoes({
               key={cell.key}
               onClick={() => onSelectDay(cell.key, items)}
               className={`aspect-square rounded-md border-2 transition flex flex-col items-center justify-center relative overflow-hidden ${
-                tone
+                isFechado
+                  ? 'bg-ink-mute/20 text-ink-mute border-ink-mute/30 line-through'
+                  : tone
                   ? `${tone.bg} ${tone.text} border-ink/15 hover:border-ink/40`
                   : 'bg-paper text-ink-soft border-line hover:border-ink-mute'
               } ${isSelected ? 'ring-4 ring-ink/40' : ''} ${
                 isToday ? 'ring-2 ring-lulu-magenta' : ''
               }`}
+              title={isFechado ? 'Fechado' : undefined}
             >
               <span className={`text-sm font-bold ${isToday ? 'text-lulu-magenta' : ''}`}>
                 {cell.date.getDate()}
               </span>
-              {items.length > 0 && (
+              {items.length > 0 && !isFechado && (
                 <span className="text-[9px] font-bold leading-none mt-0.5 px-1.5 py-0.5 rounded-full bg-ink/15">
                   {items.length}
                 </span>
               )}
-              {temSemWa && (
+              {isFechado && (
+                <span className="text-[8px] font-bold leading-none mt-0.5 uppercase tracking-wider">
+                  fechado
+                </span>
+              )}
+              {temSemWa && !isFechado && (
                 <span
                   className="absolute top-1 right-1 w-2 h-2 rounded-full bg-lulu-heart-red ring-1 ring-white"
                   title="Algum agendamento sem WhatsApp"

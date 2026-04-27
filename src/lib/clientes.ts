@@ -1,5 +1,6 @@
 import { withClient, withTx } from './db';
 import { isValidCPF, validateWhatsappBR } from './format';
+import { getTagsParaClientes } from './tags';
 import type { Cliente, ClienteComAgregados, ClienteAgregados, Vale, Transacao } from './types';
 import type { PoolClient } from 'pg';
 
@@ -54,7 +55,7 @@ export async function listClientesComAgregados(
       GROUP BY c.id
       ORDER BY c.nome ASC
     `);
-    return res.rows.map((r) => ({
+    const list: ClienteComAgregados[] = res.rows.map((r) => ({
       ...rowToCliente(r),
       agregados: {
         totalEmitido: Number(r.total_emitido),
@@ -64,7 +65,15 @@ export async function listClientesComAgregados(
         qtdAtivos: Number(r.qtd_ativos),
         ultimaCompra: r.ultima_compra ? (r.ultima_compra as Date).toISOString() : null,
       } satisfies ClienteAgregados,
+      tags: [],
     }));
+    const ids = list.map((c) => c.id);
+    const tagMap = await getTagsParaClientes(ids);
+    for (const c of list) {
+      const ts = tagMap.get(c.id);
+      if (ts) c.tags = ts;
+    }
+    return list;
   });
 }
 
@@ -110,6 +119,47 @@ export async function regenerarPortalToken(id: number): Promise<Cliente> {
     );
     if (r.rows.length === 0) throw new Error('Cliente não encontrado.');
     return rowToCliente(r.rows[0]);
+  });
+}
+
+/**
+ * Mescla `sourceId` em `targetId`: migra vales/avaliações/tags do source pro
+ * target e marca o source como deletado. Pra resolver duplicados manualmente
+ * quando o admin detecta dois cadastros pra mesma pessoa.
+ */
+export async function mesclarClientes(sourceId: number, targetId: number): Promise<void> {
+  if (sourceId === targetId) throw new Error('Origem e destino são o mesmo cliente.');
+  await withTx(async (c) => {
+    const ck = await c.query<{ id: number }>(
+      `SELECT id FROM clientes WHERE id IN ($1, $2)`,
+      [sourceId, targetId],
+    );
+    if (ck.rows.length !== 2) throw new Error('Cliente origem ou destino não encontrado.');
+
+    // Migra FKs
+    await c.query(
+      `UPDATE vales SET cliente_id = $1 WHERE cliente_id = $2`,
+      [targetId, sourceId],
+    );
+    await c.query(
+      `UPDATE avaliacoes SET cliente_id = $1 WHERE cliente_id = $2`,
+      [targetId, sourceId],
+    );
+
+    // Tags — copia tags do source pro target (sem duplicar) e remove do source
+    await c.query(
+      `INSERT INTO cliente_tags (cliente_id, tag_id)
+       SELECT $1, tag_id FROM cliente_tags WHERE cliente_id = $2
+       ON CONFLICT DO NOTHING`,
+      [targetId, sourceId],
+    );
+    await c.query(`DELETE FROM cliente_tags WHERE cliente_id = $1`, [sourceId]);
+
+    // Soft delete source
+    await c.query(
+      `UPDATE clientes SET deletado_em = NOW(), atualizado_em = NOW() WHERE id = $1`,
+      [sourceId],
+    );
   });
 }
 

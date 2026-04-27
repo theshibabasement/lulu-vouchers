@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarioAvaliacoes } from './CalendarioAvaliacoes';
 import { HorariosConfig } from './HorariosConfig';
+import { DiasFechadosManager } from './DiasFechadosManager';
 import { formatCPF, formatDate, formatDateTime, whatsappLink } from '@/lib/format';
 import type { Avaliacao, AvaliacaoStatus } from '@/lib/types';
 
@@ -36,7 +37,22 @@ export function AvaliacoesAdmin({ onToast }: Props) {
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
   });
   const [showHorarios, setShowHorarios] = useState(false);
+  const [showDiasFechados, setShowDiasFechados] = useState(false);
+  const [diasFechados, setDiasFechados] = useState<Set<string>>(new Set());
   const [query, setQuery] = useState('');
+
+  async function loadDiasFechados() {
+    try {
+      const r = await fetch('/api/dias-fechados', { cache: 'no-store' });
+      const j = (await r.json()) as { dias?: { data: string }[] };
+      setDiasFechados(new Set((j.dias ?? []).map((d) => d.data)));
+    } catch {
+      /* ignore */
+    }
+  }
+  useEffect(() => {
+    loadDiasFechados();
+  }, []);
 
   async function load() {
     setLoading(true);
@@ -310,10 +326,19 @@ export function AvaliacoesAdmin({ onToast }: Props) {
 
       {filtro === 'calendario' && (
         <div className="mb-6">
+          <div className="flex justify-end mb-2">
+            <button
+              onClick={() => setShowDiasFechados(true)}
+              className="text-xs font-bold uppercase tracking-wider text-ink-soft hover:text-lulu-magenta transition px-3 py-1.5 rounded-full border-2 border-line"
+            >
+              Dias fechados
+            </button>
+          </div>
           <CalendarioAvaliacoes
             avaliacoes={avaliacoes}
             selectedDayIso={selectedDay}
             onSelectDay={(iso) => setSelectedDay(iso)}
+            diasFechados={diasFechados}
           />
           {selectedDay && filtered.length === 0 && (
             <div className="text-center py-10 text-ink-soft">
@@ -356,6 +381,13 @@ export function AvaliacoesAdmin({ onToast }: Props) {
           </div>
         ))}
       </div>
+
+      {showDiasFechados && (
+        <DiasFechadosManager
+          onClose={() => setShowDiasFechados(false)}
+          onChanged={loadDiasFechados}
+        />
+      )}
     </>
   );
 }

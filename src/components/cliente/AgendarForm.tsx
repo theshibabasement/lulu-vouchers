@@ -58,10 +58,27 @@ export function AgendarForm({ autenticado, nomePadrao, cpfPadrao, whatsappPadrao
   const [clienteCriado, setClienteCriado] = useState(false);
   const [janelas, setJanelas] = useState<Janela[]>([]);
   const [loadingJanelas, setLoadingJanelas] = useState(false);
+  const [diasFechados, setDiasFechados] = useState<Set<string>>(new Set());
+
+  // Carrega lista de dias fechados (uma vez)
+  useEffect(() => {
+    fetch('/api/dias-fechados')
+      .then((r) => r.json())
+      .then((j: { dias?: { data: string }[] }) => {
+        setDiasFechados(new Set((j.dias ?? []).map((d) => d.data)));
+      })
+      .catch(() => {});
+  }, []);
+
+  const dataFechada = data && diasFechados.has(data);
 
   // Carrega janelas disponíveis da data
   useEffect(() => {
     if (!data) {
+      setJanelas([]);
+      return;
+    }
+    if (diasFechados.has(data)) {
       setJanelas([]);
       return;
     }
@@ -71,7 +88,7 @@ export function AgendarForm({ autenticado, nomePadrao, cpfPadrao, whatsappPadrao
       .then((j: { janelas?: Janela[] }) => setJanelas(j.janelas ?? []))
       .catch(() => setJanelas([]))
       .finally(() => setLoadingJanelas(false));
-  }, [data]);
+  }, [data, diasFechados]);
 
   const slots = useMemo(() => generateSlots(janelas, data), [janelas, data]);
 
@@ -88,6 +105,9 @@ export function AgendarForm({ autenticado, nomePadrao, cpfPadrao, whatsappPadrao
     e.preventDefault();
     setErr(null);
     if (!nome.trim()) return setErr('Informa teu nome.');
+    if (data && diasFechados.has(data)) {
+      return setErr('Loja fechada nesse dia. Escolhe outra data.');
+    }
     if (!data || !hora) return setErr('Escolhe data e horário.');
     if (whatsapp.trim()) {
       const v = validateWhatsappBR(whatsapp);
@@ -276,10 +296,19 @@ export function AgendarForm({ autenticado, nomePadrao, cpfPadrao, whatsappPadrao
                 type="date"
                 value={data}
                 onChange={(e) => setData(e.target.value)}
-                className="lulu-input"
+                className={`lulu-input ${
+                  dataFechada
+                    ? 'border-lulu-heart-red focus:border-lulu-heart-red focus:ring-lulu-heart-red/15'
+                    : ''
+                }`}
                 required
                 min={new Date().toISOString().slice(0, 10)}
               />
+              {dataFechada && (
+                <p className="text-xs text-lulu-heart-red mt-1.5">
+                  Loja fechada nesse dia. Escolhe outra data.
+                </p>
+              )}
             </Field>
             <Field label="Hora" required hint={slotsHint(loadingJanelas, janelas, slots, !!data)}>
               <select
