@@ -151,7 +151,7 @@
      com a fita térmica 80mm e não desperdiçar papel.
      A via do cliente é maior (tem QR + barcode no rodapé). */
   @page cliente { size: 80mm 200mm; margin: 0; }
-  @page loja    { size: 80mm 130mm; margin: 0; }
+  @page loja    { size: 80mm 150mm; margin: 0; }
   /* Fallback (caso o browser não respeite @page nomeado) */
   @page { size: 80mm 200mm; margin: 0; }
 
@@ -185,6 +185,8 @@
   .receipt .field-line { margin-bottom: 4px; }
   .receipt .date { margin-top: 6px; font-size: 9pt; }
   .receipt .sign { margin-top: 10px; font-size: 9pt; }
+  /* Via da loja não tem QR/barcode — espaço extra pra cliente assinar */
+  .print-receipt[data-via='loja'] .sign { margin-top: 28mm; }
 
   /* Códigos compactados pra caber */
   .receipt .codes { margin-top: 6px; gap: 4px; }

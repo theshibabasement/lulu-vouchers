@@ -90,10 +90,13 @@ export function Receipt({ data, via, portalBase, barcodeOpts, qrSize }: Props) {
         de forma absolutamente consciente, não podendo dela legalmente me arrepender.
       </p>
       <div className="date">{dateStr}</div>
-      <div className="sign">
-        <div className="line"></div>
-        Assinatura do cliente
-      </div>
+
+      {via === 'loja' && (
+        <div className="sign">
+          <div className="line"></div>
+          Assinatura do cliente
+        </div>
+      )}
 
       {via === 'cliente' && (
         <>
