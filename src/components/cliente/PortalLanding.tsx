@@ -26,14 +26,26 @@ export function PortalLanding({ tokenInvalido }: Props) {
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ cpf, senha }),
       });
-      const j = (await r.json().catch(() => ({}))) as { error?: string };
+      const j = (await r.json().catch(() => ({}))) as { error?: string; redirect?: string };
       if (!r.ok) throw new Error(j.error || 'Falha no login.');
-      router.replace('/cliente');
+      const dest = j.redirect || '/cliente';
+      router.replace(dest);
       router.refresh();
     } catch (e) {
       setErr((e as Error).message);
     } finally {
       setLoading(false);
+    }
+  }
+
+  // Aplica máscara de CPF só se input parece numérico (≥4 dígitos puros).
+  // Username de admin pode ter letras — não força mask.
+  function onCpfInput(v: string) {
+    const onlyDigits = v.replace(/\D/g, '');
+    if (onlyDigits.length >= 4 && onlyDigits.length === v.replace(/[.\s-]/g, '').length) {
+      setCpf(maskCPFInput(v));
+    } else {
+      setCpf(v);
     }
   }
 
@@ -76,15 +88,14 @@ export function PortalLanding({ tokenInvalido }: Props) {
 
           <div>
             <label className="block text-xs font-bold uppercase tracking-wider text-ink-soft mb-2">
-              CPF
+              CPF ou usuário
             </label>
             <input
               autoFocus
-              inputMode="numeric"
-              autoComplete="off"
+              autoComplete="username"
               value={cpf}
-              onChange={(e) => setCpf(maskCPFInput(e.target.value))}
-              maxLength={14}
+              onChange={(e) => onCpfInput(e.target.value)}
+              maxLength={20}
               placeholder="000.000.000-00"
               className="w-full px-4 py-3 rounded-md border-2 border-line bg-paper-tint text-base focus:outline-none focus:border-lulu-magenta focus:ring-4 focus:ring-lulu-magenta/15 transition"
             />

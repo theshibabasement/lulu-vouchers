@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { loginComSenha } from '@/lib/cliente-auth';
+import { ensureBootstrapAdmin } from '@/lib/admins';
+import { loginAdmin } from '@/lib/session';
 import { getClientIp, rateLimit, resetRateLimit } from '@/lib/rate-limit';
 
 export async function POST(req: Request) {
@@ -17,10 +19,24 @@ export async function POST(req: Request) {
   if (!body?.cpf || !body?.senha) {
     return NextResponse.json({ error: 'CPF e senha obrigatórios.' }, { status: 400 });
   }
-  const result = await loginComSenha(body.cpf, body.senha);
-  if (typeof result === 'string') {
-    return NextResponse.json({ error: result }, { status: 401 });
+
+  // 1) Tenta cliente (CPF + senha)
+  const clienteResult = await loginComSenha(body.cpf, body.senha);
+  if (typeof clienteResult !== 'string') {
+    resetRateLimit(key);
+    return NextResponse.json({ ok: true });
   }
-  resetRateLimit(key);
-  return NextResponse.json({ ok: true });
+
+  // 2) Fallback: tenta admin com o mesmo input (username + senha).
+  // Útil quando admin acessa o portal via PWA do cliente — em vez de
+  // mostrar erro, redireciona pro painel admin.
+  await ensureBootstrapAdmin().catch(() => {});
+  const adminResult = await loginAdmin(body.cpf.trim(), body.senha);
+  if (typeof adminResult !== 'string') {
+    resetRateLimit(key);
+    return NextResponse.json({ ok: true, redirect: '/admin' });
+  }
+
+  // Erro do cliente prevalece (tentativa primária)
+  return NextResponse.json({ error: clienteResult }, { status: 401 });
 }
