@@ -29,8 +29,12 @@ interface Props {
 export function AvaliacoesAdmin({ onToast }: Props) {
   const [avaliacoes, setAvaliacoes] = useState<Avaliacao[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filtro, setFiltro] = useState<'futuras' | 'calendario' | 'pendentes' | 'hoje'>('futuras');
-  const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [filtro, setFiltro] = useState<'futuras' | 'calendario' | 'pendentes' | 'hoje'>('calendario');
+  const [selectedDay, setSelectedDay] = useState<string | null>(() => {
+    const d = new Date();
+    const p = (n: number) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+  });
   const [showHorarios, setShowHorarios] = useState(false);
 
   async function load() {
@@ -128,10 +132,10 @@ export function AvaliacoesAdmin({ onToast }: Props) {
       <div className="flex flex-wrap gap-2 mb-5">
         {(
           [
-            ['futuras', 'Próximas'],
-            ['hoje', 'Hoje'],
-            ['pendentes', 'Pendentes'],
             ['calendario', 'Calendário'],
+            ['hoje', 'Hoje'],
+            ['futuras', 'Próximas'],
+            ['pendentes', 'Pendentes'],
           ] as const
         ).map(([k, label]) => (
           <button

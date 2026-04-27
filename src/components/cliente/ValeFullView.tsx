@@ -119,7 +119,7 @@ export function ValeFullView({ vale, portalBase, onBack }: Props) {
                 <li key={i} className="py-3 flex items-start justify-between gap-3">
                   <div>
                     <div className="text-sm font-bold text-ink">
-                      {t.tipo === 'criacao' ? 'Emissão' : 'Abatimento'}
+                      {t.tipo === 'criacao' ? 'Emissão' : 'Desconto'}
                     </div>
                     <div className="text-xs text-ink-soft mt-0.5">
                       {formatDateTime(t.data)}

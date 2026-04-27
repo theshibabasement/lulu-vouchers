@@ -165,25 +165,33 @@ export async function getDashboard(): Promise<DashboardData> {
   });
 }
 
-/** Dados detalhados de um mês específico — usado pelo relatório fiscal. */
+/** Dados detalhados de um mês — usado pelo relatório fiscal/contábil. */
 export async function getRelatorioMensal(year: number, month: number) {
   // month: 1..12
   return withClient(async (c) => {
     const startStr = `${year}-${String(month).padStart(2, '0')}-01`;
     const [emitidosRes, abatimentosRes, totaisRes] = await Promise.all([
       c.query(
-        `SELECT id, cliente_id, nome, cpf, valor_original, saldo, status, criado_em
-         FROM vales
-         WHERE deletado_em IS NULL
-           AND criado_em >= $1::date
-           AND criado_em <  ($1::date + INTERVAL '1 month')
-         ORDER BY criado_em ASC`,
+        `SELECT
+           v.id, v.cliente_id, v.nome, v.cpf,
+           v.valor_original, v.saldo, v.status, v.criado_em,
+           cl.whatsapp, cl.email, cl.endereco, cl.cidade
+         FROM vales v
+         LEFT JOIN clientes cl ON cl.id = v.cliente_id
+         WHERE v.deletado_em IS NULL
+           AND v.criado_em >= $1::date
+           AND v.criado_em <  ($1::date + INTERVAL '1 month')
+         ORDER BY v.criado_em ASC`,
         [startStr],
       ),
       c.query(
-        `SELECT t.id, t.vale_id, t.valor, t.data, t.obs, v.nome, v.cpf
+        `SELECT
+           t.id, t.vale_id, t.valor, t.data, t.obs,
+           v.nome, v.cpf, v.cliente_id,
+           cl.whatsapp, cl.email
          FROM transacoes t
-         JOIN vales v ON v.id = t.vale_id
+         JOIN vales v   ON v.id  = t.vale_id
+         LEFT JOIN clientes cl ON cl.id = v.cliente_id
          WHERE t.tipo = 'abatimento'
            AND t.data >= $1::date
            AND t.data <  ($1::date + INTERVAL '1 month')
@@ -216,6 +224,10 @@ export async function getRelatorioMensal(year: number, month: number) {
         id: r.id as string,
         nome: r.nome as string,
         cpf: r.cpf as string,
+        whatsapp: (r.whatsapp as string | null) ?? null,
+        email: (r.email as string | null) ?? null,
+        endereco: (r.endereco as string | null) ?? null,
+        cidade: (r.cidade as string | null) ?? null,
         valorOriginal: Number(r.valor_original),
         saldo: Number(r.saldo),
         status: r.status as string,
@@ -226,6 +238,8 @@ export async function getRelatorioMensal(year: number, month: number) {
         valeId: r.vale_id as string,
         nome: r.nome as string,
         cpf: r.cpf as string,
+        whatsapp: (r.whatsapp as string | null) ?? null,
+        email: (r.email as string | null) ?? null,
         valor: Number(r.valor),
         data: (r.data as Date).toISOString(),
         obs: (r.obs as string | null) ?? null,

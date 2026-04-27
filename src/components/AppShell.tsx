@@ -135,7 +135,7 @@ export function AppShell({ initialVales, portalBase }: Props) {
       setVales((cur) => cur.map((v) => (v.id === j.vale!.id ? j.vale! : v)));
       setDetail(j.vale);
       playSuccessSound();
-      pushToast(`Abatido. Saldo: R$ ${j.vale.saldo.toFixed(2).replace('.', ',')}`, 'success');
+      pushToast(`Descontado. Saldo: R$ ${j.vale.saldo.toFixed(2).replace('.', ',')}`, 'success');
     } catch (e) {
       pushToast((e as Error).message, 'error');
     }

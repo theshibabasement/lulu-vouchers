@@ -112,13 +112,13 @@ export function Dashboard({ onOpenCliente }: Props) {
       {/* Hoje + Geral */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <Card title="Hoje · Vales emitidos" value={String(data.hoje.valesEmitidos)} sub={formatBRL(data.hoje.valorEmitido)} tone="purple" />
-        <Card title="Hoje · Abatimentos" value={String(data.hoje.valesAbatidos)} sub={formatBRL(data.hoje.valorAbatido)} tone="cyan" />
+        <Card title="Hoje · Descontos aplicados" value={String(data.hoje.valesAbatidos)} sub={formatBRL(data.hoje.valorAbatido)} tone="cyan" />
       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <Stat label="Saldo em circulação" value={formatBRL(data.geral.saldoCirculacao)} tone="magenta" />
         <Stat label="Total emitido" value={formatBRL(data.geral.totalEmitido)} tone="purple" />
-        <Stat label="Total abatido" value={formatBRL(data.geral.totalAbatido)} tone="cyan" />
+        <Stat label="Total descontado" value={formatBRL(data.geral.totalAbatido)} tone="cyan" />
         <Stat label="Vales ativos" value={String(data.geral.qtdAtivos)} sub={`de ${data.geral.qtdVales}`} tone="ink" />
       </div>
 
@@ -272,7 +272,7 @@ function BarChart({ porMes }: { porMes: PorMes[] }) {
         </span>
         <span className="flex items-center gap-1.5">
           <span className="inline-block w-3 h-3 rounded bg-lulu-cyan"></span>
-          Abatido
+          Descontado
         </span>
       </div>
       {porMes.length === 0 ? (
@@ -293,7 +293,7 @@ function BarChart({ porMes }: { porMes: PorMes[] }) {
                   <div
                     className="w-3 sm:w-4 bg-lulu-cyan rounded-t"
                     style={{ height: `${hAbat}%` }}
-                    title={`Abatido: ${formatBRL(r.abatido)}`}
+                    title={`Descontado: ${formatBRL(r.abatido)}`}
                   />
                 </div>
                 <div className="text-[10px] text-ink-mute font-bold uppercase tracking-wide">

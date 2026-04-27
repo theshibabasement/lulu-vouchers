@@ -155,10 +155,10 @@ export function ValeDetail({ vale, onClose, onAbater, onReprint, onDelete }: Pro
           </Section>
 
           {!isUsed && !isDeleted && (
-            <Section title="Abater do saldo">
+            <Section title="Descontar do saldo">
               <div className="space-y-3">
                 <div>
-                  <label className="lulu-label">Valor a abater</label>
+                  <label className="lulu-label">Valor a descontar</label>
                   <input
                     inputMode="numeric"
                     value={valor}
@@ -183,7 +183,7 @@ export function ValeDetail({ vale, onClose, onAbater, onReprint, onDelete }: Pro
                   disabled={busy}
                   className="lulu-btn-primary w-full disabled:opacity-60"
                 >
-                  {busy ? 'Abatendo…' : 'Abater do vale'}
+                  {busy ? 'Descontando…' : 'Descontar do vale'}
                 </button>
               </div>
             </Section>
@@ -240,7 +240,7 @@ export function ValeDetail({ vale, onClose, onAbater, onReprint, onDelete }: Pro
                   <tr key={i} className="border-t border-line">
                     <td className="py-2 px-2">{formatDateTime(t.data)}</td>
                     <td className="py-2 px-2">
-                      {t.tipo === 'criacao' ? 'Emissão' : 'Abatimento'}
+                      {t.tipo === 'criacao' ? 'Emissão' : 'Desconto'}
                     </td>
                     <td
                       className={`py-2 px-2 font-mono font-bold ${
