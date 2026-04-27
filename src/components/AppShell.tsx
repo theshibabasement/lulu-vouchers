@@ -285,6 +285,10 @@ export function AppShell({ initialVales, portalBase }: Props) {
         vale={shareVale}
         portalBase={portalBase}
         onClose={() => setShareVale(null)}
+        onWhatsappSaved={() => {
+          refreshClientes();
+          refreshVales();
+        }}
       />
 
       <ToastStack toasts={toasts} onDismiss={dismiss} />

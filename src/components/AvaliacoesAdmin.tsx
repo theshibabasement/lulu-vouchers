@@ -199,8 +199,10 @@ function AvaliacaoCard({
   function buildConfirmationText(): string {
     const tamanhos = a.tamanhos.length > 0 ? `\n👗 Tamanhos: ${a.tamanhos.join(', ')}` : '';
     const pecas = a.qtdPecas ? `\n📦 ${a.qtdPecas} peças (aproximado)` : '';
+    // Emoji 💖 (sparkling heart) é Unicode 6 — universal em qualquer cliente
+    // do WhatsApp. 🩷 (pink heart, Unicode 14) quebra em apps mais antigos.
     return [
-      `Oi ${firstName(a.nome)}! 🩷 Aqui é a Lulu Arteira.`,
+      `Oi ${firstName(a.nome)}! 💖 Aqui é a Lulu Arteira.`,
       ``,
       `Tua avaliação tá confirmada:`,
       `📅 ${formatDate(a.dataHora)}`,
