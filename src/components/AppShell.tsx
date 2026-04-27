@@ -8,6 +8,7 @@ import { ValeDetail } from './ValeDetail';
 import { ClientesList } from './ClientesList';
 import { ClienteDetail } from './ClienteDetail';
 import { AvaliacoesAdmin } from './AvaliacoesAdmin';
+import { Dashboard } from './Dashboard';
 import { PrintArea } from './PrintArea';
 import { WhatsAppShareModal } from './WhatsAppShareModal';
 import { ToastStack, type ToastMsg } from './Toast';
@@ -20,7 +21,7 @@ interface Props {
   portalBase: string;
 }
 
-type View = 'nova' | 'vales' | 'clientes' | 'avaliacoes';
+type View = 'nova' | 'vales' | 'clientes' | 'avaliacoes' | 'painel';
 type PrintMode = 'ambas' | 'cliente' | 'loja';
 type Filter = 'all' | 'active' | 'used' | 'deleted';
 
@@ -210,6 +211,9 @@ export function AppShell({ initialVales, portalBase }: Props) {
         <TabBtn active={view === 'avaliacoes'} onClick={() => switchView('avaliacoes')}>
           Avaliações
         </TabBtn>
+        <TabBtn active={view === 'painel'} onClick={() => switchView('painel')}>
+          Painel
+        </TabBtn>
       </nav>
 
       {view === 'nova' && (
@@ -246,6 +250,10 @@ export function AppShell({ initialVales, portalBase }: Props) {
 
       {view === 'avaliacoes' && (
         <AvaliacoesAdmin onToast={(m, k) => pushToast(m, k)} />
+      )}
+
+      {view === 'painel' && (
+        <Dashboard onOpenCliente={(id) => setClienteDetailId(id)} />
       )}
 
       <ValeDetail

@@ -92,10 +92,9 @@ export function ClienteDetail({ clienteId, portalBase, onClose, onChanged, onOpe
       // Monta link novo + msg + abre wa.me se cliente tem WhatsApp
       const url = `${portalBase}/cliente/${encodeURIComponent(j.cliente.portalToken ?? '')}`;
       const msg =
-        `Oi ${j.cliente.nome.split(' ')[0]}! Aqui é a Lulu Arteira.\n` +
-        `Geramos um novo link de acesso pra teus vales:\n${url}\n\n` +
-        `O link antigo (e a senha, se você tinha cadastrado) foram desativados ` +
-        `por segurança.`;
+        `Oi ${j.cliente.nome.split(' ')[0]}! Geramos um novo link de acesso pra os seus vales:\n` +
+        `${url}\n\n` +
+        `O link antigo (e a senha, se você tinha cadastrado) foram desativados por segurança.`;
       const wa = j.cliente.whatsapp ? whatsappLink(j.cliente.whatsapp) : null;
       if (wa) {
         const fullLink = `${wa}?text=${encodeURIComponent(msg)}`;
