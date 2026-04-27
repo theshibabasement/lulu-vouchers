@@ -55,8 +55,8 @@ export function WhatsAppShareModal({ vale, portalBase, onClose, onWhatsappSaved 
   // em particular) renderizam emojis Unicode mais novos como "?".
   // Acentos passam bem em todos os apps; mantidos.
   const text =
-    `Oi ${firstName}! Aqui é a Lulu Arteira.\n` +
-    `Teu vale tá pronto: ${formatBRL(vale.valorOriginal)} em crédito.\n\n` +
+    `Oi ${firstName}! Seu vale de ${formatBRL(vale.valorOriginal)} aqui da Lulu Arteira ` +
+    `já está pronto e seu crédito já está disponível!\n\n` +
     `Confere o saldo e histórico aqui:\n${url}`;
 
   const validation = whatsapp.trim() ? validateWhatsappBR(whatsapp) : null;

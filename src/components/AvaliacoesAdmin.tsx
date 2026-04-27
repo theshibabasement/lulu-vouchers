@@ -229,20 +229,20 @@ function AvaliacaoCard({
   }
 
   function buildConfirmationText(): string {
-    const tamanhos = a.tamanhos.length > 0 ? `\nTamanhos: ${a.tamanhos.join(', ')}` : '';
-    const pecas = a.qtdPecas ? `\nQtd. peças (aproximado): ${a.qtdPecas}` : '';
     // Sem emojis — alguns clientes WhatsApp renderizam como "?".
     // Texto puro com acentos passa bem em todos.
-    return [
-      `Oi ${firstName(a.nome)}! Aqui é a Lulu Arteira.`,
-      ``,
-      `Tua avaliação está confirmada:`,
+    const linhas: string[] = [
+      `Oi ${firstName(a.nome)}! Sua avaliação aqui na Lulu Arteira já está confirmada!`,
       `Data: ${formatDate(a.dataHora)}`,
       `Hora: ${hora}`,
-      `${pecas}${tamanhos}`,
-      ``,
-      `Te esperamos!`,
-    ].join('\n');
+    ];
+    if (a.qtdPecas) linhas.push(`Qtd. peças (aproximado): ${a.qtdPecas}`);
+    if (a.tamanhos.length > 0) linhas.push(`Tamanhos: ${a.tamanhos.join(', ')}`);
+    linhas.push(`Endereço: R. Evaristo de Antoni, 2337 - São José, Caxias do Sul - RS, 95032-410`);
+    linhas.push(`https://share.google/JmIHTFYgOD49YyuOW`);
+    linhas.push(``);
+    linhas.push(`Te esperamos!`);
+    return linhas.join('\n');
   }
 
   /**
