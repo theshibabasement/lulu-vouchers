@@ -99,21 +99,16 @@ export function Receipt({ data, via, portalBase, barcodeOpts, qrSize }: Props) {
         <>
           <hr className="divider" />
           <div className="codes">
-            <div className="codes-row">
-              {portalUrl && (
-                <div className="qr-block">
-                  <canvas ref={qrCanvasRef} className="qr-canvas"></canvas>
-                  <div className="qr-caption">Escaneia pra ver teu vale</div>
-                </div>
-              )}
-              <div className="barcode-block">
-                <svg ref={barcodeRef} className="barcode-svg"></svg>
-                <div className="code-label">Vale: {id}</div>
-              </div>
-            </div>
             {portalUrl && (
-              <div className="portal-url">{stripHttp(portalUrl)}</div>
+              <div className="qr-block">
+                <canvas ref={qrCanvasRef} className="qr-canvas"></canvas>
+                <div className="qr-caption">Escaneia pra ver teu vale</div>
+              </div>
             )}
+            <div className="barcode-block">
+              <svg ref={barcodeRef} className="barcode-svg"></svg>
+              <div className="code-label">Vale: {id}</div>
+            </div>
           </div>
         </>
       )}
@@ -128,8 +123,4 @@ function buildPortalUrl(base: string | undefined, token: string | null | undefin
   if (!token) return null;
   const root = (base || '').replace(/\/$/, '');
   return `${root}/cliente/${encodeURIComponent(token)}`;
-}
-
-function stripHttp(url: string): string {
-  return url.replace(/^https?:\/\//, '');
 }

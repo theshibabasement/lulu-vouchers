@@ -99,54 +99,43 @@
   margin-top: 4px; margin-bottom: 6px;
 }
 
-/* Códigos: QR + CODE128 lado a lado */
-.receipt .codes { margin-top: 14px; }
-.receipt .codes-row {
+/* Códigos: QR centralizado em cima, barcode centralizado embaixo */
+.receipt .codes {
+  margin-top: 12px;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  justify-content: space-between;
-  gap: 6mm;
+  gap: 8px;
 }
-.receipt .qr-block {
-  text-align: center;
-  flex: 0 0 auto;
-}
+.receipt .qr-block { text-align: center; }
 .receipt .qr-canvas {
   display: block;
-  width: 28mm;
-  height: 28mm;
+  margin: 0 auto;
+  width: 36mm;
+  height: 36mm;
 }
 .receipt .qr-caption {
-  font-size: 7.5pt;
-  letter-spacing: 0.05em;
-  margin-top: 2px;
+  font-size: 8pt;
+  letter-spacing: 0.04em;
+  margin-top: 3px;
   font-weight: 700;
   text-align: center;
-  max-width: 28mm;
   line-height: 1.2;
 }
 .receipt .barcode-block {
-  flex: 1 1 auto;
   text-align: center;
-  min-width: 0;
+  width: 100%;
 }
 .receipt .barcode-svg {
   display: block;
   margin: 0 auto;
-  max-width: 100%;
+  max-width: 70mm;
   height: auto;
 }
 .receipt .barcode-block .code-label {
   font-family: 'JetBrains Mono', monospace;
   font-size: 9pt; margin-top: 2px;
   letter-spacing: 0.06em; font-weight: 700;
-}
-.receipt .portal-url {
-  text-align: center;
-  margin-top: 8px;
-  font-size: 8.5pt;
-  font-family: 'JetBrains Mono', monospace;
-  word-break: break-all;
 }
 
 /* ------- Print ------- */
@@ -158,9 +147,10 @@
 .print-area { display: none; }
 
 @media print {
-  /* MP-4200 TH: melhor qualidade em 80mm × 300mm. `auto` deixa altura crescer
-     conforme conteúdo, e cortar entre vias usa o cut after page. */
-  @page { size: 80mm 300mm; margin: 0; }
+  /* MP-4200 TH: 80mm × auto. A térmica corta entre páginas (page-break),
+     então cada via vira uma "página" e o driver corta. `auto` evita
+     desperdício de papel. */
+  @page { size: 80mm auto; margin: 0; }
   html, body {
     width: 80mm;
     background: #fff !important;
@@ -169,23 +159,23 @@
     padding: 0 !important;
     color: #000 !important;
   }
-  body * { visibility: hidden !important; }
-  .print-area, .print-area * { visibility: visible !important; }
-  .print-area {
-    display: block !important;
-    position: absolute;
-    left: 0;
-    top: 0;
-    width: 80mm;
-  }
+
+  /* Esconde TUDO que é filho direto do body — incluindo overlays injetados
+     por extensões (Proton Pass, gerenciadores de senha) — exceto o print-area.
+     `display: none` (em vez de visibility) garante que nada ocupa espaço
+     na página, evitando páginas em branco e bagunça com @page auto. */
+  body > *:not(.print-area) { display: none !important; }
+  .print-area { display: block !important; }
+
   .receipt {
     font-size: 11.5pt;
     line-height: 1.5;
   }
   .receipt .brand { color: #000 !important; }
+
   .print-receipt {
     width: 80mm;
-    padding: 6mm 6mm 8mm;
+    padding: 4mm 5mm 6mm;
     box-sizing: border-box;
     page-break-after: always;
     break-after: page;
@@ -195,6 +185,7 @@
     page-break-after: auto;
     break-after: auto;
   }
+
   body.print-only-cliente .print-receipt[data-via='loja'] { display: none !important; }
   body.print-only-cliente .print-receipt[data-via='cliente'] {
     page-break-after: auto !important; break-after: auto !important;

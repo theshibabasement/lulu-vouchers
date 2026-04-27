@@ -51,14 +51,15 @@ export function NovaVendaForm({ onCreated, onError, portalBase }: Props) {
     }
   }
 
-  // Live preview data — sem token (QR só aparece após criar)
+  // Live preview data — token placeholder gera QR fictício pra ilustrar.
+  // O token real vem do servidor após criar.
   const previewData = {
     id: 'LB' + '0'.repeat(10),
     nome: nome.trim(),
     cpf: cpf.trim(),
     valorOriginal: parseBRL(valor),
     criadoEm: new Date().toISOString(),
-    portalToken: null,
+    portalToken: 'preview',
   };
 
   return (
