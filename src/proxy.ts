@@ -10,6 +10,7 @@ const PUBLIC_EXACT = new Set<string>([
   '/api/health',
   '/admin/login',
   '/api/auth/login',
+  '/api/horarios/disponiveis',
 ]);
 
 /**

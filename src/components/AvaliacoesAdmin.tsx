@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { CalendarioAvaliacoes } from './CalendarioAvaliacoes';
+import { HorariosConfig } from './HorariosConfig';
 import { formatCPF, formatDate, formatDateTime, whatsappLink } from '@/lib/format';
 import type { Avaliacao, AvaliacaoStatus } from '@/lib/types';
 
@@ -30,6 +31,7 @@ export function AvaliacoesAdmin({ onToast }: Props) {
   const [loading, setLoading] = useState(true);
   const [filtro, setFiltro] = useState<'futuras' | 'calendario' | 'pendentes' | 'hoje'>('futuras');
   const [selectedDay, setSelectedDay] = useState<string | null>(null);
+  const [showHorarios, setShowHorarios] = useState(false);
 
   async function load() {
     setLoading(true);
@@ -148,12 +150,44 @@ export function AvaliacoesAdmin({ onToast }: Props) {
           </button>
         ))}
         <button
+          onClick={() => setShowHorarios(true)}
+          className="ml-auto px-4 py-2 rounded-full text-sm font-bold border-2 border-lulu-purple-soft bg-paper text-lulu-purple hover:border-lulu-purple transition"
+        >
+          ⚙ Horários
+        </button>
+        <button
           onClick={load}
-          className="ml-auto px-4 py-2 rounded-full text-sm font-bold border-2 border-line bg-paper text-ink-soft hover:border-ink-mute transition"
+          className="px-4 py-2 rounded-full text-sm font-bold border-2 border-line bg-paper text-ink-soft hover:border-ink-mute transition"
         >
           ↻ Recarregar
         </button>
       </div>
+
+      {showHorarios && (
+        <div
+          className="fixed inset-0 bg-ink/40 backdrop-blur z-[140] grid place-items-center px-4 py-6 overflow-y-auto"
+          onClick={() => setShowHorarios(false)}
+        >
+          <div
+            className="bg-paper-sparkle rounded-lg max-w-2xl w-full p-6 border-[3px] border-ink shadow-sticker-lg"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="font-display text-2xl text-lulu-purple">
+                Configurar horários
+              </h2>
+              <button
+                onClick={() => setShowHorarios(false)}
+                className="text-2xl text-ink-mute hover:text-ink hover:bg-paper-tint w-9 h-9 rounded-md transition"
+                aria-label="Fechar"
+              >
+                ×
+              </button>
+            </div>
+            <HorariosConfig onToast={onToast} />
+          </div>
+        </div>
+      )}
 
       {loading && <div className="text-ink-soft text-sm">Carregando…</div>}
 

@@ -1,7 +1,8 @@
 import { withClient, withTx } from './db';
-import { upsertClienteTx, digitsOnly } from './clientes';
+import { upsertClienteTxFull, digitsOnly } from './clientes';
 import { validateWhatsappBR } from './format';
-import type { Avaliacao, AvaliacaoStatus } from './types';
+import { getJanelasParaData, inJanela, spLocal } from './horarios';
+import type { Avaliacao, AvaliacaoStatus, Cliente } from './types';
 
 function rowToAvaliacao(r: Record<string, unknown>): Avaliacao {
   return {
@@ -83,14 +84,43 @@ export interface CreateAvaliacaoInput {
  * Cria avaliação. Se CPF fornecido, faz UPSERT do cliente e vincula.
  * Se vier `clienteId` (cliente autenticado), usa esse.
  */
+export interface CreateAvaliacaoResult {
+  avaliacao: Avaliacao;
+  /** Cliente vinculado (se CPF foi informado). */
+  cliente: Cliente | null;
+  /** true se o cliente foi criado agora pelo agendamento; false se já existia. */
+  clienteCriado: boolean;
+}
+
 export async function createAvaliacao(input: CreateAvaliacaoInput): Promise<Avaliacao> {
+  const r = await createAvaliacaoFull(input);
+  return r.avaliacao;
+}
+
+export async function createAvaliacaoFull(input: CreateAvaliacaoInput): Promise<CreateAvaliacaoResult> {
   const nome = input.nome.trim();
   if (!nome) throw new Error('Informe o nome.');
   const data = new Date(input.dataHora);
   if (isNaN(data.getTime())) throw new Error('Data/hora inválida.');
-  if (data.getTime() < Date.now() - 1000 * 60 * 5) {
-    throw new Error('Não dá pra agendar no passado.');
+
+  // Antecedência mínima: 1 hora a partir de agora.
+  const ONE_HOUR_MS = 60 * 60 * 1000;
+  if (data.getTime() < Date.now() + ONE_HOUR_MS) {
+    throw new Error('Agende com pelo menos 1 hora de antecedência.');
   }
+
+  // Valida horário dentro das janelas configuradas (override por data,
+  // depois por dia da semana, depois padrão).
+  const sp = spLocal(input.dataHora);
+  const janelas = await getJanelasParaData(sp.dateStr);
+  if (janelas.length === 0) {
+    throw new Error('Lulu não tem horário disponível nesse dia.');
+  }
+  if (!inJanela(sp.hh, sp.mm, janelas)) {
+    const desc = janelas.map((j) => `${j.start}–${j.end}`).join(' e ');
+    throw new Error(`Horário fora do funcionamento (${desc}).`);
+  }
+
   const cpfDigits = input.cpf ? digitsOnly(input.cpf) : '';
   if (input.cpf && cpfDigits.length !== 11) throw new Error('CPF inválido.');
   if (input.qtdPecas !== undefined && input.qtdPecas !== null) {
@@ -110,12 +140,16 @@ export async function createAvaliacao(input: CreateAvaliacaoInput): Promise<Aval
 
   return withTx(async (c) => {
     let clienteId = input.clienteId ?? null;
+    let cliente: Cliente | null = null;
+    let criado = false;
     if (!clienteId && cpfDigits) {
-      const cliente = await upsertClienteTx(c, {
+      const upsert = await upsertClienteTxFull(c, {
         cpf: cpfDigits,
         nome,
         whatsapp: whatsappFormatted ?? undefined,
       });
+      cliente = upsert.cliente;
+      criado = upsert.criado;
       clienteId = cliente.id;
     }
     const r = await c.query(
@@ -133,7 +167,11 @@ export async function createAvaliacao(input: CreateAvaliacaoInput): Promise<Aval
         input.observacoes ? input.observacoes.trim() || null : null,
       ],
     );
-    return rowToAvaliacao(r.rows[0]);
+    return {
+      avaliacao: rowToAvaliacao(r.rows[0]),
+      cliente,
+      clienteCriado: criado,
+    };
   });
 }
 

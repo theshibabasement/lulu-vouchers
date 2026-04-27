@@ -217,14 +217,35 @@ function normalizeWhatsapp(raw: string | null | undefined): string | null {
  * UPSERT por CPF. Se cliente existe, atualiza apenas campos não-nulos
  * e mantém os já preenchidos (nunca sobrescreve com null).
  */
+export interface UpsertClienteResult {
+  cliente: Cliente;
+  /** true se o cliente foi criado agora; false se já existia. */
+  criado: boolean;
+}
+
 export async function upsertClienteTx(
   client: PoolClient,
   input: UpsertClienteInput,
 ): Promise<Cliente> {
+  const result = await upsertClienteTxFull(client, input);
+  return result.cliente;
+}
+
+export async function upsertClienteTxFull(
+  client: PoolClient,
+  input: UpsertClienteInput,
+): Promise<UpsertClienteResult> {
   const cpf = digitsOnly(input.cpf);
   if (cpf.length !== 11) throw new Error('CPF inválido.');
   if (!isValidCPF(cpf)) throw new Error('CPF inválido — confere os dígitos.');
   if (!input.nome.trim()) throw new Error('Nome obrigatório.');
+
+  // Confere se já existe antes de fazer o upsert
+  const existing = await client.query<{ id: string }>(
+    `SELECT id FROM clientes WHERE cpf = $1`,
+    [cpf],
+  );
+  const criado = existing.rows.length === 0;
 
   const res = await client.query(
     `
@@ -251,7 +272,7 @@ export async function upsertClienteTx(
       clean(input.observacoes),
     ],
   );
-  return rowToCliente(res.rows[0]);
+  return { cliente: rowToCliente(res.rows[0]), criado };
 }
 
 export async function upsertCliente(input: UpsertClienteInput): Promise<Cliente> {

@@ -2,10 +2,37 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, useMemo, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { maskCPFInput, maskWhatsappInput, validateWhatsappBR } from '@/lib/format';
 import { TAMANHOS_INFANTIS } from '@/lib/tamanhos';
+
+interface Janela {
+  start: string;
+  end: string;
+}
+
+/** Gera slots de 30min dentro das janelas, com filtro de antecedência mínima. */
+function generateSlots(janelas: Janela[], dataStr: string): string[] {
+  const slots: string[] = [];
+  const now = Date.now();
+  const minTs = now + 60 * 60 * 1000; // 1h de antecedência
+  for (const j of janelas) {
+    const [hs, ms] = j.start.split(':').map(Number);
+    const [he, me] = j.end.split(':').map(Number);
+    const startMin = hs * 60 + ms;
+    const endMin = he * 60 + me;
+    for (let m = startMin; m <= endMin; m += 30) {
+      const hh = Math.floor(m / 60);
+      const mm = m % 60;
+      const time = `${String(hh).padStart(2, '0')}:${String(mm).padStart(2, '0')}`;
+      // Validar antecedência (montar em local SP)
+      const ts = new Date(`${dataStr}T${time}:00-03:00`).getTime();
+      if (ts >= minTs) slots.push(time);
+    }
+  }
+  return slots;
+}
 
 interface Props {
   autenticado: boolean;
@@ -27,6 +54,31 @@ export function AgendarForm({ autenticado, nomePadrao, cpfPadrao, whatsappPadrao
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
   const [ok, setOk] = useState(false);
+  const [portalUrl, setPortalUrl] = useState<string | null>(null);
+  const [clienteCriado, setClienteCriado] = useState(false);
+  const [janelas, setJanelas] = useState<Janela[]>([]);
+  const [loadingJanelas, setLoadingJanelas] = useState(false);
+
+  // Carrega janelas disponíveis da data
+  useEffect(() => {
+    if (!data) {
+      setJanelas([]);
+      return;
+    }
+    setLoadingJanelas(true);
+    fetch(`/api/horarios/disponiveis?data=${data}`)
+      .then((r) => r.json())
+      .then((j: { janelas?: Janela[] }) => setJanelas(j.janelas ?? []))
+      .catch(() => setJanelas([]))
+      .finally(() => setLoadingJanelas(false));
+  }, [data]);
+
+  const slots = useMemo(() => generateSlots(janelas, data), [janelas, data]);
+
+  // Reseta hora se virou inválida pra nova data
+  useEffect(() => {
+    if (hora && !slots.includes(hora)) setHora('');
+  }, [slots, hora]);
 
   function toggleTamanho(t: string) {
     setTamanhos((cur) => (cur.includes(t) ? cur.filter((x) => x !== t) : [...cur, t]));
@@ -41,7 +93,8 @@ export function AgendarForm({ autenticado, nomePadrao, cpfPadrao, whatsappPadrao
       const v = validateWhatsappBR(whatsapp);
       if (!v.valid) return setErr(`WhatsApp: ${v.error}`);
     }
-    const dataHora = new Date(`${data}T${hora}:00`).toISOString();
+    // Constroi data em SP local (UTC-3 fixo, BR sem DST)
+    const dataHora = new Date(`${data}T${hora}:00-03:00`).toISOString();
 
     setBusy(true);
     try {
@@ -59,8 +112,18 @@ export function AgendarForm({ autenticado, nomePadrao, cpfPadrao, whatsappPadrao
           observacoes: obs.trim() || undefined,
         }),
       });
-      const j = (await r.json().catch(() => ({}))) as { error?: string };
+      const j = (await r.json().catch(() => ({}))) as {
+        error?: string;
+        portalToken?: string | null;
+        clienteCriado?: boolean;
+      };
       if (!r.ok) throw new Error(j.error || 'Falha ao agendar.');
+      // Se cliente foi criado agora, expõe URL com token pro cadastro de senha
+      if (j.clienteCriado && j.portalToken) {
+        const origin = window.location.origin;
+        setPortalUrl(`${origin}/cliente/${encodeURIComponent(j.portalToken)}`);
+        setClienteCriado(true);
+      }
       setOk(true);
     } catch (e) {
       setErr((e as Error).message);
@@ -69,11 +132,26 @@ export function AgendarForm({ autenticado, nomePadrao, cpfPadrao, whatsappPadrao
     }
   }
 
+  function resetForm() {
+    setOk(false);
+    setPortalUrl(null);
+    setClienteCriado(false);
+    setNome(nomePadrao ?? '');
+    setCpf(cpfPadrao ? maskCPFInput(cpfPadrao) : '');
+    setWhatsapp(whatsappPadrao ?? '');
+    setData('');
+    setHora('');
+    setQtd('');
+    setTamanhos([]);
+    setObs('');
+    setErr(null);
+  }
+
   if (ok) {
     const temWa = !!whatsapp.trim();
     return (
       <main className="min-h-screen bg-paper-sparkle px-4 py-10 grid place-items-center">
-        <div className="max-w-md text-center bg-paper rounded-lg p-8 border-[3px] border-ink shadow-sticker-lg">
+        <div className="max-w-md w-full text-center bg-paper rounded-lg p-8 border-[3px] border-ink shadow-sticker-lg">
           <div className="text-5xl mb-4">🩷</div>
           <h1 className="font-display text-3xl text-lulu-purple mb-2">
             Avaliação solicitada!
@@ -83,18 +161,39 @@ export function AgendarForm({ autenticado, nomePadrao, cpfPadrao, whatsappPadrao
               ? 'A Lulu vai confirmar contigo logo logo pelo WhatsApp ✨'
               : 'A Lulu recebeu teu pedido. Sem WhatsApp informado, te aguardamos no horário escolhido — ou passa na loja pra confirmar 🩷'}
           </p>
+
+          {clienteCriado && portalUrl && (
+            <div className="bg-lulu-yellow/30 border-2 border-lulu-yellow rounded-md p-4 mb-4 text-left">
+              <h3 className="font-display text-lg text-ink mb-1">
+                Quer acompanhar pelo painel? 💛
+              </h3>
+              <p className="text-sm text-ink-soft mb-3">
+                Crie uma conta agora pra ver tua avaliação, futuros vales e
+                histórico de qualquer celular.
+              </p>
+              <a
+                href={portalUrl}
+                className="lulu-btn-primary w-full text-center inline-block"
+              >
+                Criar minha conta
+              </a>
+            </div>
+          )}
+
           <div className="grid gap-2">
             {autenticado ? (
               <Link href="/cliente" className="lulu-btn-primary text-center">
                 Voltar ao painel
               </Link>
             ) : (
-              <button
-                onClick={() => router.refresh()}
-                className="lulu-btn-secondary"
-              >
-                Agendar outra
-              </button>
+              <>
+                <button onClick={resetForm} className="lulu-btn-secondary">
+                  Agendar outra
+                </button>
+                <Link href="/cliente" className="text-xs text-ink-mute hover:text-ink underline mt-1">
+                  Já tem conta? Entrar
+                </Link>
+              </>
             )}
           </div>
         </div>
@@ -182,16 +281,41 @@ export function AgendarForm({ autenticado, nomePadrao, cpfPadrao, whatsappPadrao
                 min={new Date().toISOString().slice(0, 10)}
               />
             </Field>
-            <Field label="Hora" required>
-              <input
-                type="time"
+            <Field label="Hora" required hint={slotsHint(loadingJanelas, janelas, slots, !!data)}>
+              <select
                 value={hora}
                 onChange={(e) => setHora(e.target.value)}
-                className="lulu-input"
+                disabled={!data || slots.length === 0}
+                className="lulu-input disabled:opacity-60"
                 required
-              />
+              >
+                <option value="">
+                  {!data
+                    ? 'Escolhe a data primeiro'
+                    : loadingJanelas
+                    ? 'Carregando…'
+                    : slots.length === 0
+                    ? 'Sem horário'
+                    : 'Selecione…'}
+                </option>
+                {slots.map((s) => (
+                  <option key={s} value={s}>
+                    {s}
+                  </option>
+                ))}
+              </select>
             </Field>
           </div>
+          {data && !loadingJanelas && janelas.length === 0 && (
+            <div className="rounded-md bg-lulu-cheek-pink/40 border-2 border-lulu-heart-red px-3 py-2 text-sm text-ink">
+              Lulu não tem horário disponível nesse dia. Escolhe outra data 🩷
+            </div>
+          )}
+          {data && !loadingJanelas && janelas.length > 0 && slots.length === 0 && (
+            <div className="rounded-md bg-lulu-yellow/30 border-2 border-lulu-yellow px-3 py-2 text-sm text-ink">
+              Sem horários livres com 1h de antecedência hoje. Tenta outra data.
+            </div>
+          )}
 
           <Field label="Quantidade aproximada de peças" hint="opcional">
             <input
@@ -284,4 +408,17 @@ function Field({
       {children}
     </div>
   );
+}
+
+function slotsHint(
+  loading: boolean,
+  janelas: { start: string; end: string }[],
+  slots: string[],
+  hasDate: boolean,
+): string | undefined {
+  if (!hasDate) return undefined;
+  if (loading) return undefined;
+  if (janelas.length === 0) return 'fechado';
+  if (slots.length === 0) return 'sem vaga';
+  return janelas.map((j) => `${j.start}–${j.end}`).join(' · ');
 }

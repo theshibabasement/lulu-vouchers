@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { createAvaliacao } from '@/lib/avaliacoes';
+import { createAvaliacaoFull } from '@/lib/avaliacoes';
 
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as
@@ -15,7 +15,7 @@ export async function POST(req: Request) {
     | null;
   if (!body) return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 });
   try {
-    const a = await createAvaliacao({
+    const result = await createAvaliacaoFull({
       nome: body.nome ?? '',
       cpf: body.cpf,
       whatsapp: body.whatsapp,
@@ -24,7 +24,19 @@ export async function POST(req: Request) {
       tamanhos: body.tamanhos,
       observacoes: body.observacoes,
     });
-    return NextResponse.json({ avaliacao: a }, { status: 201 });
+    // Só expõe portalToken se o cliente foi criado AGORA por esse agendamento.
+    // Pra cliente que já existia, não revelamos token (segurança).
+    const portalToken =
+      result.clienteCriado && result.cliente ? result.cliente.portalToken : null;
+    return NextResponse.json(
+      {
+        avaliacao: result.avaliacao,
+        clienteCriado: result.clienteCriado,
+        clienteJaExistia: !!result.cliente && !result.clienteCriado,
+        portalToken,
+      },
+      { status: 201 },
+    );
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });
   }

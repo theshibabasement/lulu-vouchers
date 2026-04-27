@@ -128,6 +128,40 @@ CREATE INDEX IF NOT EXISTS idx_admins_username ON admins(username);
 CREATE INDEX IF NOT EXISTS idx_admins_ativo    ON admins(ativo);
 
 -- ====================================================
+-- Config de horários de avaliação
+-- ====================================================
+-- tipo='padrao' (default p/ todos os dias)
+-- tipo='semanal' (override por dia da semana 0=domingo..6=sábado)
+-- tipo='data' (override por data específica)
+-- janelas: array JSONB [{"start":"09:00","end":"12:00"},...]; vazio = fechado
+CREATE TABLE IF NOT EXISTS config_horarios (
+  id            BIGSERIAL PRIMARY KEY,
+  tipo          TEXT NOT NULL CHECK (tipo IN ('padrao','semanal','data')),
+  dia_semana    SMALLINT CHECK (dia_semana IS NULL OR (dia_semana BETWEEN 0 AND 6)),
+  data          DATE,
+  janelas       JSONB NOT NULL DEFAULT '[]'::jsonb,
+  criado_em     TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  atualizado_em TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  CHECK (
+    (tipo = 'padrao'  AND dia_semana IS NULL AND data IS NULL) OR
+    (tipo = 'semanal' AND dia_semana IS NOT NULL AND data IS NULL) OR
+    (tipo = 'data'    AND dia_semana IS NULL AND data IS NOT NULL)
+  )
+);
+
+CREATE UNIQUE INDEX IF NOT EXISTS uq_config_horarios_padrao
+  ON config_horarios ((1)) WHERE tipo = 'padrao';
+CREATE UNIQUE INDEX IF NOT EXISTS uq_config_horarios_semanal
+  ON config_horarios (dia_semana) WHERE tipo = 'semanal';
+CREATE UNIQUE INDEX IF NOT EXISTS uq_config_horarios_data
+  ON config_horarios (data) WHERE tipo = 'data';
+
+-- Seed do padrão (09:00–12:00 e 13:30–18:00)
+INSERT INTO config_horarios (tipo, janelas)
+SELECT 'padrao', '[{"start":"09:00","end":"12:00"},{"start":"13:30","end":"18:00"}]'::jsonb
+WHERE NOT EXISTS (SELECT 1 FROM config_horarios WHERE tipo = 'padrao');
+
+-- ====================================================
 -- Backfill: cria cliente pra cada CPF distinto nos vales antigos
 -- ====================================================
 INSERT INTO clientes (cpf, nome, criado_em, atualizado_em)
