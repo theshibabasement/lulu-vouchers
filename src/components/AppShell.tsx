@@ -9,6 +9,7 @@ import { ClientesList } from './ClientesList';
 import { ClienteDetail } from './ClienteDetail';
 import { AvaliacoesAdmin } from './AvaliacoesAdmin';
 import { Dashboard } from './Dashboard';
+import { AdminsList } from './AdminsList';
 import { PrintArea } from './PrintArea';
 import { WhatsAppShareModal } from './WhatsAppShareModal';
 import { ToastStack, type ToastMsg } from './Toast';
@@ -21,7 +22,14 @@ interface Props {
   portalBase: string;
 }
 
-type View = 'nova' | 'vales' | 'clientes' | 'avaliacoes' | 'painel';
+type View = 'nova' | 'vales' | 'clientes' | 'avaliacoes' | 'painel' | 'usuarios';
+
+interface MeAdmin {
+  id: number;
+  username: string;
+  nome: string;
+  perfil: 'dona' | 'atendente';
+}
 type PrintMode = 'ambas' | 'cliente' | 'loja';
 type Filter = 'all' | 'active' | 'used' | 'deleted';
 
@@ -36,6 +44,16 @@ export function AppShell({ initialVales, portalBase }: Props) {
   const [print, setPrint] = useState<{ data: ReceiptData; mode: PrintMode } | null>(null);
   const [shareVale, setShareVale] = useState<Vale | null>(null);
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
+  const [me, setMe] = useState<MeAdmin | null>(null);
+
+  useEffect(() => {
+    fetch('/api/me', { cache: 'no-store' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j: { admin?: MeAdmin } | null) => {
+        if (j?.admin) setMe(j.admin);
+      })
+      .catch(() => {});
+  }, []);
 
   const pushToast = useCallback(
     (msg: string, kind?: ToastMsg['kind'], code?: string) => {
@@ -180,9 +198,16 @@ export function AppShell({ initialVales, portalBase }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-xs text-ink-soft tracking-wide hidden sm:inline">
-            Sistema de vales 🩷
-          </span>
+          {me ? (
+            <span className="text-xs text-ink-soft tracking-wide hidden sm:inline">
+              {me.nome} <span className="text-ink-mute">·</span>{' '}
+              <span className="uppercase tracking-wider font-bold">{me.perfil}</span>
+            </span>
+          ) : (
+            <span className="text-xs text-ink-soft tracking-wide hidden sm:inline">
+              Sistema de vales 🩷
+            </span>
+          )}
           <button
             onClick={logout}
             className="text-xs font-bold uppercase tracking-wider text-ink-soft hover:text-lulu-magenta transition px-3 py-1.5 rounded-full border-2 border-line hover:border-lulu-magenta"
@@ -214,6 +239,11 @@ export function AppShell({ initialVales, portalBase }: Props) {
         <TabBtn active={view === 'painel'} onClick={() => switchView('painel')}>
           Painel
         </TabBtn>
+        {me?.perfil === 'dona' && (
+          <TabBtn active={view === 'usuarios'} onClick={() => switchView('usuarios')}>
+            Usuários
+          </TabBtn>
+        )}
       </nav>
 
       {view === 'nova' && (
@@ -254,6 +284,10 @@ export function AppShell({ initialVales, portalBase }: Props) {
 
       {view === 'painel' && (
         <Dashboard onOpenCliente={(id) => setClienteDetailId(id)} />
+      )}
+
+      {view === 'usuarios' && me?.perfil === 'dona' && (
+        <AdminsList selfId={me.id} onToast={(m, k) => pushToast(m, k)} />
       )}
 
       <ValeDetail

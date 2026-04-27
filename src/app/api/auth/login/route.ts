@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
-import { checkCredentials, getSession } from '@/lib/session';
+import { ensureBootstrapAdmin } from '@/lib/admins';
+import { loginAdmin } from '@/lib/session';
 import { getClientIp, rateLimit, resetRateLimit } from '@/lib/rate-limit';
 
 export async function POST(req: Request) {
@@ -8,12 +9,16 @@ export async function POST(req: Request) {
   const rl = rateLimit({ key, max: 8, windowMs: 15 * 60 * 1000 });
   if (!rl.ok) {
     return NextResponse.json(
-      {
-        error: `Muitas tentativas. Tenta de novo em ${rl.retryAfterSec}s.`,
-      },
+      { error: `Muitas tentativas. Tenta de novo em ${rl.retryAfterSec}s.` },
       { status: 429 },
     );
   }
+
+  // Garante que sempre exista pelo menos uma dona (cria a partir de env
+  // var na primeira execução).
+  await ensureBootstrapAdmin().catch((e) => {
+    console.error('[admin-login] bootstrap falhou:', e);
+  });
 
   const body = (await req.json().catch(() => null)) as
     | { user?: string; password?: string }
@@ -21,13 +26,10 @@ export async function POST(req: Request) {
   if (!body?.user || !body?.password) {
     return NextResponse.json({ error: 'Credenciais ausentes.' }, { status: 400 });
   }
-  if (!checkCredentials(body.user, body.password)) {
-    return NextResponse.json({ error: 'Usuário ou senha inválidos.' }, { status: 401 });
+  const result = await loginAdmin(body.user, body.password);
+  if (typeof result === 'string') {
+    return NextResponse.json({ error: result }, { status: 401 });
   }
-  const session = await getSession();
-  session.user = body.user;
-  session.loggedAt = Date.now();
-  await session.save();
   resetRateLimit(key);
-  return NextResponse.json({ ok: true });
+  return NextResponse.json({ ok: true, perfil: result.perfil });
 }

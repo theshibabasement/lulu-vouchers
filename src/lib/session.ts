@@ -1,8 +1,11 @@
 import { getIronSession, type SessionOptions } from 'iron-session';
 import { cookies } from 'next/headers';
+import { autenticarAdmin, getAdmin, type Admin } from './admins';
 
 export interface SessionData {
   user?: string;
+  adminId?: number;
+  perfil?: 'dona' | 'atendente';
   loggedAt?: number;
 }
 
@@ -29,9 +32,26 @@ export async function getSession() {
   return getIronSession<SessionData>(store, sessionOptions());
 }
 
-export function checkCredentials(user: string, pass: string): boolean {
-  const expectedUser = process.env.AUTH_USER;
-  const expectedPass = process.env.AUTH_PASSWORD;
-  if (!expectedUser || !expectedPass) return false;
-  return user === expectedUser && pass === expectedPass;
+/** Login admin via tabela `admins`. Retorna admin OR string de erro. */
+export async function loginAdmin(
+  username: string,
+  password: string,
+): Promise<Admin | string> {
+  const admin = await autenticarAdmin(username, password);
+  if (!admin) return 'Usuário ou senha inválidos.';
+  const session = await getSession();
+  session.user = admin.username;
+  session.adminId = admin.id;
+  session.perfil = admin.perfil;
+  session.loggedAt = Date.now();
+  await session.save();
+  return admin;
+}
+
+export async function getCurrentAdmin(): Promise<Admin | null> {
+  const session = await getSession();
+  if (!session.adminId) return null;
+  const admin = await getAdmin(session.adminId);
+  if (!admin || !admin.ativo) return null;
+  return admin;
 }

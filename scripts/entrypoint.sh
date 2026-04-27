@@ -13,6 +13,9 @@ else
   echo "[entrypoint] WARN: init-db falhou — seguindo com fallback."
 fi
 
+echo "[entrypoint] bootstrap admin dona..."
+node /app/scripts/bootstrap-admin.mjs || true
+
 echo "[entrypoint] iniciando loop de backup em background..."
 node /app/scripts/backup-loop.mjs &
 

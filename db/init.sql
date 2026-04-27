@@ -109,6 +109,25 @@ CREATE INDEX IF NOT EXISTS idx_avaliacoes_status  ON avaliacoes(status);
 CREATE INDEX IF NOT EXISTS idx_avaliacoes_cliente ON avaliacoes(cliente_id);
 
 -- ====================================================
+-- Administradores (multi-usuário)
+-- ====================================================
+CREATE TABLE IF NOT EXISTS admins (
+  id              BIGSERIAL PRIMARY KEY,
+  username        TEXT NOT NULL UNIQUE,
+  nome            TEXT NOT NULL,
+  senha_hash      TEXT NOT NULL,
+  perfil          TEXT NOT NULL DEFAULT 'atendente'
+                    CHECK (perfil IN ('dona','atendente')),
+  ativo           BOOLEAN NOT NULL DEFAULT true,
+  ultimo_login_em TIMESTAMPTZ,
+  criado_em       TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  atualizado_em   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_admins_username ON admins(username);
+CREATE INDEX IF NOT EXISTS idx_admins_ativo    ON admins(ativo);
+
+-- ====================================================
 -- Backfill: cria cliente pra cada CPF distinto nos vales antigos
 -- ====================================================
 INSERT INTO clientes (cpf, nome, criado_em, atualizado_em)
