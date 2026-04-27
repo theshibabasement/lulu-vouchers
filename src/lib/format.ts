@@ -46,3 +46,26 @@ export function formatLongDate(iso?: string): string {
   const d = new Date(iso || Date.now());
   return `Caxias do Sul, ${d.getDate()} de ${MESES[d.getMonth()]} de ${d.getFullYear()}`;
 }
+
+export function maskWhatsappInput(raw: string): string {
+  let v = raw.replace(/\D/g, '').slice(0, 11);
+  if (v.length === 0) return '';
+  if (v.length <= 2) return `(${v}`;
+  if (v.length <= 6) return `(${v.slice(0, 2)}) ${v.slice(2)}`;
+  if (v.length <= 10) return `(${v.slice(0, 2)}) ${v.slice(2, 6)}-${v.slice(6)}`;
+  return `(${v.slice(0, 2)}) ${v.slice(2, 7)}-${v.slice(7)}`;
+}
+
+/** Constrói URL wa.me com prefixo Brasil 55 e somente dígitos. */
+export function whatsappLink(raw: string): string | null {
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length < 10) return null;
+  const e164 = digits.startsWith('55') ? digits : `55${digits}`;
+  return `https://wa.me/${e164}`;
+}
+
+export function formatDate(iso: string): string {
+  const d = new Date(iso);
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${pad(d.getDate())}/${pad(d.getMonth() + 1)}/${d.getFullYear()}`;
+}

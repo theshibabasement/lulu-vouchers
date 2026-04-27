@@ -111,12 +111,26 @@ Saída:
 /data/exports/vales-20260426-1430.json
 /data/exports/vales-20260426-1430.csv
 /data/exports/transacoes-20260426-1430.csv
+/data/exports/clientes-20260426-1430.csv
 ```
 
 Para baixar para sua máquina local (executando no host onde o Docker está):
 
 ```bash
 docker cp lulu-app:/data/exports ./backups/
+```
+
+### Purgar vales soft-deletados
+
+Soft delete vira `deletado_em` no Postgres. Vales somem das listagens mas
+continuam acessíveis pelo filtro **Excluídos**. Para apagar definitivamente:
+
+```bash
+# DRY-RUN: lista o que seria apagado
+docker exec lulu-app node scripts/purge-deleted.mjs
+
+# Apaga de verdade (cascade nas transações)
+docker exec lulu-app node scripts/purge-deleted.mjs --apply
 ```
 
 ### Backup do banco

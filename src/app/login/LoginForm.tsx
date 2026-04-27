@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import { useState, type FormEvent } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 
@@ -39,9 +40,19 @@ export default function LoginForm() {
     <main className="min-h-screen grid place-items-center px-6 py-12 bg-paper-sparkle">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
+          <div className="relative w-28 h-28 mx-auto mb-5 rounded-full overflow-hidden border-[4px] border-ink shadow-sticker-lg">
+            <Image
+              src="/lulu-logo.jpg"
+              alt="Lulu Arteira"
+              fill
+              sizes="112px"
+              priority
+              className="object-cover"
+            />
+          </div>
           <h1 className="font-display text-5xl text-lulu-purple mb-1">Lulu Arteira</h1>
           <p className="font-title text-sm uppercase tracking-[0.2em] text-lulu-magenta">
-            Sistema de vales
+            Brechó Infantil · Sistema de vales
           </p>
         </div>
 

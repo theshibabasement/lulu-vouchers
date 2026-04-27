@@ -10,12 +10,15 @@ interface Props {
   onClose: () => void;
   onAbater: (id: string, valor: number, obs: string) => Promise<void>;
   onReprint: (vale: Vale) => void;
+  onDelete: (id: string) => Promise<void>;
 }
 
-export function ValeDetail({ vale, onClose, onAbater, onReprint }: Props) {
+export function ValeDetail({ vale, onClose, onAbater, onReprint, onDelete }: Props) {
   const [valor, setValor] = useState('');
   const [obs, setObs] = useState('');
   const [busy, setBusy] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const svgRef = useRef<SVGSVGElement | null>(null);
 
   useEffect(() => {
@@ -41,6 +44,7 @@ export function ValeDetail({ vale, onClose, onAbater, onReprint }: Props) {
     if (vale) {
       setValor('');
       setObs('');
+      setConfirmDelete(false);
     }
   }, [vale?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -48,6 +52,17 @@ export function ValeDetail({ vale, onClose, onAbater, onReprint }: Props) {
 
   const used = vale.valorOriginal - vale.saldo;
   const isUsed = vale.saldo === 0;
+  const isDeleted = !!vale.deletadoEm;
+
+  async function doDelete() {
+    if (!vale || deleting) return;
+    setDeleting(true);
+    try {
+      await onDelete(vale.id);
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   async function doAbater() {
     if (busy || !vale) return;
@@ -79,15 +94,26 @@ export function ValeDetail({ vale, onClose, onAbater, onReprint }: Props) {
         </div>
 
         <div className="p-6">
+          {isDeleted && (
+            <div className="rounded-md bg-lulu-cheek-pink/40 border-2 border-lulu-heart-red px-3 py-2 text-sm text-ink mb-4 flex items-center gap-2">
+              <span className="font-bold">Vale excluído.</span>
+              <span className="text-xs opacity-80">
+                Soft delete em {formatDateTime(vale.deletadoEm!)}.
+              </span>
+            </div>
+          )}
+
           <div
             className={`rounded-lg p-5 mb-5 text-white ${
-              isUsed
+              isDeleted
+                ? 'bg-gradient-to-br from-ink-mute to-ink-soft opacity-70'
+                : isUsed
                 ? 'bg-gradient-to-br from-ink to-ink-soft'
                 : 'bg-gradient-to-br from-lulu-magenta to-lulu-purple'
             }`}
           >
             <div className="text-xs uppercase tracking-[0.16em] opacity-80">
-              {isUsed ? 'Vale esgotado' : 'Saldo disponível'}
+              {isDeleted ? 'Vale excluído' : isUsed ? 'Vale esgotado' : 'Saldo disponível'}
             </div>
             <div className="font-display text-4xl font-extrabold my-2">
               {formatBRL(vale.saldo)}
@@ -128,7 +154,7 @@ export function ValeDetail({ vale, onClose, onAbater, onReprint }: Props) {
             </button>
           </Section>
 
-          {!isUsed && (
+          {!isUsed && !isDeleted && (
             <Section title="Abater do saldo">
               <div className="space-y-3">
                 <div>
@@ -160,6 +186,42 @@ export function ValeDetail({ vale, onClose, onAbater, onReprint }: Props) {
                   {busy ? 'Abatendo…' : 'Abater do vale'}
                 </button>
               </div>
+            </Section>
+          )}
+
+          {!isDeleted && (
+            <Section title="Excluir vale">
+              {!confirmDelete ? (
+                <button
+                  onClick={() => setConfirmDelete(true)}
+                  className="w-full px-4 py-3 rounded-md font-bold text-sm border-2 border-lulu-heart-red text-lulu-heart-red bg-paper hover:bg-lulu-cheek-pink/20 transition"
+                >
+                  Excluir este vale
+                </button>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs text-ink-soft">
+                    O vale será marcado como excluído e some das listagens.
+                    Pode ser restaurado depois pelo filtro <b>Excluídos</b>.
+                  </p>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      onClick={() => setConfirmDelete(false)}
+                      className="lulu-btn-secondary"
+                      disabled={deleting}
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={doDelete}
+                      disabled={deleting}
+                      className="px-4 py-3 rounded-md font-display font-bold text-base border-[3px] border-ink shadow-sticker bg-lulu-heart-red text-white active:translate-y-[2px] active:shadow-none transition disabled:opacity-60"
+                    >
+                      {deleting ? 'Excluindo…' : 'Confirmar exclusão'}
+                    </button>
+                  </div>
+                </div>
+              )}
             </Section>
           )}
 

@@ -43,17 +43,25 @@ async function main() {
   await client.connect();
   try {
     const valesRes = await client.query(
-      'SELECT id, nome, cpf, valor_original, saldo, status, criado_em FROM vales ORDER BY criado_em DESC',
+      `SELECT id, cliente_id, nome, cpf, valor_original, saldo, status,
+              criado_em, deletado_em
+       FROM vales ORDER BY criado_em DESC`,
     );
     const txRes = await client.query(
       `SELECT t.id, t.vale_id, t.tipo, t.valor, t.data, t.obs
        FROM transacoes t ORDER BY t.data ASC`,
+    );
+    const clientesRes = await client.query(
+      `SELECT id, cpf, nome, whatsapp, email, endereco, cidade, observacoes,
+              criado_em, atualizado_em
+       FROM clientes ORDER BY nome ASC`,
     );
 
     const tag = stamp();
     const valesJson = path.join(OUT_DIR, `vales-${tag}.json`);
     const valesCsv = path.join(OUT_DIR, `vales-${tag}.csv`);
     const txCsv = path.join(OUT_DIR, `transacoes-${tag}.csv`);
+    const clientesCsv = path.join(OUT_DIR, `clientes-${tag}.csv`);
 
     const txByVale = new Map();
     for (const t of txRes.rows) {
@@ -70,12 +78,16 @@ async function main() {
     await fs.writeFile(valesJson, JSON.stringify(valesEnriched, null, 2), 'utf8');
     await fs.writeFile(valesCsv, toCsv(valesRes.rows), 'utf8');
     await fs.writeFile(txCsv, toCsv(txRes.rows), 'utf8');
+    await fs.writeFile(clientesCsv, toCsv(clientesRes.rows), 'utf8');
 
     console.log('[export] arquivos gravados em', OUT_DIR);
     console.log('  -', valesJson);
     console.log('  -', valesCsv);
     console.log('  -', txCsv);
-    console.log(`[export] vales: ${valesRes.rowCount} | transações: ${txRes.rowCount}`);
+    console.log('  -', clientesCsv);
+    console.log(
+      `[export] vales: ${valesRes.rowCount} | transações: ${txRes.rowCount} | clientes: ${clientesRes.rowCount}`,
+    );
   } finally {
     await client.end();
   }

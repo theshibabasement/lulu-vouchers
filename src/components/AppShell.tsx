@@ -1,25 +1,32 @@
 'use client';
 
+import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 import { NovaVendaForm } from './NovaVendaForm';
 import { ValesList } from './ValesList';
 import { ValeDetail } from './ValeDetail';
+import { ClientesList } from './ClientesList';
+import { ClienteDetail } from './ClienteDetail';
 import { PrintArea } from './PrintArea';
 import { ToastStack, type ToastMsg } from './Toast';
-import type { Vale } from '@/lib/types';
+import type { Vale, ClienteComAgregados } from '@/lib/types';
 import type { ReceiptData } from './Receipt';
 
 interface Props {
   initialVales: Vale[];
 }
 
-type View = 'nova' | 'vales';
+type View = 'nova' | 'vales' | 'clientes';
 type PrintMode = 'ambas' | 'cliente' | 'loja';
+type Filter = 'all' | 'active' | 'used' | 'deleted';
 
 export function AppShell({ initialVales }: Props) {
   const [view, setView] = useState<View>('nova');
   const [vales, setVales] = useState<Vale[]>(initialVales);
+  const [clientes, setClientes] = useState<ClienteComAgregados[]>([]);
+  const [valesFilter, setValesFilter] = useState<Filter>('all');
   const [detail, setDetail] = useState<Vale | null>(null);
+  const [clienteDetailId, setClienteDetailId] = useState<number | null>(null);
   const [print, setPrint] = useState<{ data: ReceiptData; mode: PrintMode } | null>(null);
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
 
@@ -33,16 +40,28 @@ export function AppShell({ initialVales }: Props) {
     setToasts((cur) => cur.filter((t) => t.id !== id));
   }, []);
 
-  async function refresh() {
+  const refreshVales = useCallback(async (filter: Filter = valesFilter) => {
     try {
-      const r = await fetch('/api/vales', { cache: 'no-store' });
+      const url = filter === 'deleted' ? '/api/vales?includeDeleted=1' : '/api/vales';
+      const r = await fetch(url, { cache: 'no-store' });
       if (!r.ok) return;
       const j = (await r.json()) as { vales: Vale[] };
       setVales(j.vales);
     } catch {
       /* ignore */
     }
-  }
+  }, [valesFilter]);
+
+  const refreshClientes = useCallback(async () => {
+    try {
+      const r = await fetch('/api/clientes', { cache: 'no-store' });
+      if (!r.ok) return;
+      const j = (await r.json()) as { clientes: ClienteComAgregados[] };
+      setClientes(j.clientes);
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   useEffect(() => {
     if (detail) {
@@ -52,16 +71,19 @@ export function AppShell({ initialVales }: Props) {
   }, [vales, detail]);
 
   useEffect(() => {
-    document.body.style.overflow = detail ? 'hidden' : '';
-  }, [detail]);
+    document.body.style.overflow = detail || clienteDetailId !== null ? 'hidden' : '';
+  }, [detail, clienteDetailId]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && detail) setDetail(null);
+      if (e.key === 'Escape') {
+        if (detail) setDetail(null);
+        else if (clienteDetailId !== null) setClienteDetailId(null);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [detail]);
+  }, [detail, clienteDetailId]);
 
   const handleCreated = useCallback(
     (vale: Vale, mode: PrintMode) => {
@@ -89,9 +111,26 @@ export function AppShell({ initialVales }: Props) {
     }
   }
 
+  async function handleDeleteVale(id: string) {
+    try {
+      const r = await fetch(`/api/vales/${id}`, { method: 'DELETE' });
+      const j = (await r.json()) as { error?: string };
+      if (!r.ok) throw new Error(j.error || 'Falha ao excluir.');
+      setDetail(null);
+      pushToast('Vale excluído.', 'success', id);
+      refreshVales();
+      refreshClientes();
+    } catch (e) {
+      pushToast((e as Error).message, 'error');
+    }
+  }
+
   function openDetail(id: string) {
     const v = vales.find((x) => x.id === id);
-    if (v) setDetail(v);
+    if (v) {
+      setDetail(v);
+      setClienteDetailId(null);
+    }
   }
 
   async function logout() {
@@ -99,19 +138,39 @@ export function AppShell({ initialVales }: Props) {
     window.location.href = '/login';
   }
 
+  const switchView = (v: View) => {
+    setView(v);
+    if (v === 'vales') refreshVales();
+    if (v === 'clientes') refreshClientes();
+  };
+
   return (
     <div className="app-shell max-w-[1180px] mx-auto px-6 py-8 pb-16">
-      <header className="flex items-baseline justify-between flex-wrap gap-3 pb-4">
-        <div>
-          <div className="font-display text-3xl text-lulu-purple leading-none">
-            Lulu Arteira
+      <header className="flex items-center justify-between flex-wrap gap-3 pb-4">
+        <div className="flex items-center gap-3">
+          <div className="relative w-12 h-12 rounded-full overflow-hidden border-[3px] border-ink shadow-sticker shrink-0">
+            <Image
+              src="/lulu-logo.jpg"
+              alt="Lulu Arteira"
+              fill
+              sizes="48px"
+              priority
+              className="object-cover"
+            />
           </div>
-          <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-lulu-magenta mt-1">
-            Brechó Infantil
+          <div>
+            <div className="font-display text-3xl text-lulu-purple leading-none">
+              Lulu Arteira
+            </div>
+            <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-lulu-magenta mt-1">
+              Brechó Infantil
+            </div>
           </div>
         </div>
         <div className="flex items-center gap-4">
-          <span className="text-xs text-ink-soft tracking-wide">Sistema de vales 🩷</span>
+          <span className="text-xs text-ink-soft tracking-wide hidden sm:inline">
+            Sistema de vales 🩷
+          </span>
           <button
             onClick={logout}
             className="text-xs font-bold uppercase tracking-wider text-ink-soft hover:text-lulu-magenta transition px-3 py-1.5 rounded-full border-2 border-line hover:border-lulu-magenta"
@@ -121,14 +180,20 @@ export function AppShell({ initialVales }: Props) {
         </div>
       </header>
 
-      <nav className="flex border-b-2 border-line mb-7">
-        <TabBtn active={view === 'nova'} onClick={() => setView('nova')}>
+      <nav className="flex border-b-2 border-line mb-7 overflow-x-auto">
+        <TabBtn active={view === 'nova'} onClick={() => switchView('nova')}>
           Nova venda
         </TabBtn>
-        <TabBtn active={view === 'vales'} onClick={() => { setView('vales'); refresh(); }}>
+        <TabBtn active={view === 'vales'} onClick={() => switchView('vales')}>
           Consultar vales
           <span className="ml-2 px-2 py-0.5 rounded-full text-[11px] font-bold bg-lulu-purple-soft text-lulu-purple">
-            {vales.length}
+            {vales.filter((v) => !v.deletadoEm).length}
+          </span>
+        </TabBtn>
+        <TabBtn active={view === 'clientes'} onClick={() => switchView('clientes')}>
+          Clientes
+          <span className="ml-2 px-2 py-0.5 rounded-full text-[11px] font-bold bg-lulu-cyan-soft text-lulu-cyan">
+            {clientes.length}
           </span>
         </TabBtn>
       </nav>
@@ -140,13 +205,49 @@ export function AppShell({ initialVales }: Props) {
         />
       )}
 
-      {view === 'vales' && <ValesList vales={vales} onOpen={openDetail} />}
+      {view === 'vales' && (
+        <ValesList
+          vales={vales}
+          onOpen={openDetail}
+          filter={valesFilter}
+          onFilterChange={(f) => {
+            setValesFilter(f);
+            refreshVales(f);
+          }}
+        />
+      )}
+
+      {view === 'clientes' && (
+        <ClientesList clientes={clientes} onOpen={(id) => setClienteDetailId(id)} />
+      )}
 
       <ValeDetail
         vale={detail}
         onClose={() => setDetail(null)}
         onAbater={handleAbater}
         onReprint={(v) => setPrint({ data: v, mode: 'ambas' })}
+        onDelete={handleDeleteVale}
+      />
+
+      <ClienteDetail
+        clienteId={clienteDetailId}
+        onClose={() => setClienteDetailId(null)}
+        onChanged={() => refreshClientes()}
+        onOpenVale={(id) => {
+          setClienteDetailId(null);
+          // garante que vales atualizados
+          (async () => {
+            await refreshVales();
+            setView('vales');
+            const v = vales.find((x) => x.id === id);
+            if (v) setDetail(v);
+            else {
+              const r = await fetch(`/api/vales/${id}`);
+              const j = (await r.json()) as { vale?: Vale };
+              if (j.vale) setDetail(j.vale);
+            }
+          })();
+        }}
       />
 
       <PrintArea
@@ -172,7 +273,7 @@ function TabBtn({
   return (
     <button
       onClick={onClick}
-      className={`px-0 mr-7 py-3 font-display font-bold text-sm border-b-[3px] transition ${
+      className={`px-0 mr-7 py-3 font-display font-bold text-sm border-b-[3px] transition whitespace-nowrap ${
         active
           ? 'text-lulu-magenta border-lulu-magenta'
           : 'text-ink-soft border-transparent hover:text-ink'

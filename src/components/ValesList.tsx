@@ -9,16 +9,25 @@ interface Props {
   onOpen: (id: string) => void;
 }
 
-type Filter = 'all' | 'active' | 'used';
+type Filter = 'all' | 'active' | 'used' | 'deleted';
 
-export function ValesList({ vales, onOpen }: Props) {
+interface ListProps extends Props {
+  filter: Filter;
+  onFilterChange: (f: Filter) => void;
+}
+
+export function ValesList({ vales, onOpen, filter, onFilterChange }: ListProps) {
   const [query, setQuery] = useState('');
-  const [filter, setFilter] = useState<Filter>('all');
 
   const filtered = useMemo(() => {
     let list = vales;
-    if (filter === 'active') list = list.filter((v) => v.saldo > 0);
-    else if (filter === 'used') list = list.filter((v) => v.saldo === 0);
+    if (filter === 'deleted') {
+      list = list.filter((v) => v.deletadoEm);
+    } else {
+      list = list.filter((v) => !v.deletadoEm);
+      if (filter === 'active') list = list.filter((v) => v.saldo > 0);
+      else if (filter === 'used') list = list.filter((v) => v.saldo === 0);
+    }
     const q = query.toLowerCase().trim();
     if (!q) return list;
     const qDigits = q.replace(/\D/g, '');
@@ -51,17 +60,18 @@ export function ValesList({ vales, onOpen }: Props) {
             className="flex-1 py-3 bg-transparent text-base focus:outline-none"
           />
         </div>
-        <div className="flex gap-1.5">
+        <div className="flex flex-wrap gap-1.5">
           {(
             [
               ['all', 'Todos'],
               ['active', 'Ativos'],
               ['used', 'Esgotados'],
+              ['deleted', 'Excluídos'],
             ] as const
           ).map(([k, label]) => (
             <button
               key={k}
-              onClick={() => setFilter(k)}
+              onClick={() => onFilterChange(k)}
               className={`px-4 py-2 rounded-full text-sm font-bold border-2 transition ${
                 filter === k
                   ? 'bg-ink text-white border-ink'
@@ -107,12 +117,20 @@ function ValeCard({ vale, onOpen }: { vale: Vale; onOpen: (id: string) => void }
   const used = vale.valorOriginal - vale.saldo;
   const pct = vale.valorOriginal > 0 ? (used / vale.valorOriginal) * 100 : 0;
   const isUsed = vale.saldo === 0;
+  const isDeleted = !!vale.deletadoEm;
 
   return (
     <button
       onClick={() => onOpen(vale.id)}
-      className="text-left bg-paper rounded-md p-5 border-2 border-line shadow-sm hover:-translate-y-0.5 hover:border-lulu-purple-soft hover:shadow-md transition"
+      className={`text-left bg-paper rounded-md p-5 border-2 border-line shadow-sm hover:-translate-y-0.5 hover:border-lulu-purple-soft hover:shadow-md transition ${
+        isDeleted ? 'opacity-60' : ''
+      }`}
     >
+      {isDeleted && (
+        <div className="lulu-pill bg-lulu-cheek-pink text-lulu-heart-red mb-2">
+          Excluído
+        </div>
+      )}
       <div className="font-mono text-xs text-ink-mute tracking-wide font-semibold">
         {vale.id}
       </div>

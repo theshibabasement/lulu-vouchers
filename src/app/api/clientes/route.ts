@@ -1,19 +1,16 @@
 import { NextResponse } from 'next/server';
-import { listVales, createVale } from '@/lib/vales';
+import { listClientesComAgregados, upsertCliente } from '@/lib/clientes';
 
-export async function GET(req: Request) {
-  const url = new URL(req.url);
-  const includeDeleted = url.searchParams.get('includeDeleted') === '1';
-  const vales = await listVales({ includeDeleted });
-  return NextResponse.json({ vales });
+export async function GET() {
+  const clientes = await listClientesComAgregados();
+  return NextResponse.json({ clientes });
 }
 
 export async function POST(req: Request) {
   const body = (await req.json().catch(() => null)) as
     | {
-        nome?: string;
         cpf?: string;
-        valor?: number;
+        nome?: string;
         whatsapp?: string;
         email?: string;
         endereco?: string;
@@ -23,17 +20,16 @@ export async function POST(req: Request) {
     | null;
   if (!body) return NextResponse.json({ error: 'Payload inválido.' }, { status: 400 });
   try {
-    const vale = await createVale({
-      nome: body.nome ?? '',
+    const cliente = await upsertCliente({
       cpf: body.cpf ?? '',
-      valor: Number(body.valor) || 0,
+      nome: body.nome ?? '',
       whatsapp: body.whatsapp,
       email: body.email,
       endereco: body.endereco,
       cidade: body.cidade,
       observacoes: body.observacoes,
     });
-    return NextResponse.json({ vale }, { status: 201 });
+    return NextResponse.json({ cliente }, { status: 201 });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 400 });
   }
