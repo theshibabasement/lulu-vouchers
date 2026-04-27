@@ -34,16 +34,20 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 # Public (logo, favicons) — Next standalone NÃO copia automaticamente
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
-# Scripts utilitários (export, init-db) + schema SQL
+# Scripts utilitários (export, init-db, entrypoint) + schema SQL
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
 COPY --from=builder --chown=nextjs:nodejs /app/db ./db
+
+# Entrypoint roda init-db.mjs antes de levantar o server (migrations
+# automáticas). Garante permissão de execução.
+RUN chmod +x /app/scripts/entrypoint.sh
 
 USER nextjs
 VOLUME ["/data"]
 EXPOSE 3000
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --retries=3 \
   CMD curl -fsS http://localhost:3000/api/health || exit 1
 
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", "server.js"]
+CMD ["/app/scripts/entrypoint.sh"]

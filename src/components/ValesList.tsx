@@ -31,11 +31,22 @@ export function ValesList({ vales, onOpen, filter, onFilterChange }: ListProps) 
     const q = query.toLowerCase().trim();
     if (!q) return list;
     const qDigits = q.replace(/\D/g, '');
+    // Detecta se a query é um valor numérico (com ou sem R$, ponto/vírgula).
+    // Se for, também filtra por valor original e saldo igual ao número.
+    const cleanedNumber = q
+      .replace(/r\$\s*/g, '')
+      .replace(/\./g, '')
+      .replace(',', '.');
+    const numMatch = /^\d+(\.\d{1,2})?$/.test(cleanedNumber)
+      ? parseFloat(cleanedNumber)
+      : null;
     return list.filter(
       (v) =>
         v.id.toLowerCase().includes(q) ||
         v.nome.toLowerCase().includes(q) ||
-        (qDigits && v.cpf.replace(/\D/g, '').includes(qDigits)),
+        (qDigits && v.cpf.replace(/\D/g, '').includes(qDigits)) ||
+        (numMatch !== null &&
+          (v.valorOriginal === numMatch || v.saldo === numMatch)),
     );
   }, [vales, query, filter]);
 
@@ -56,7 +67,7 @@ export function ValesList({ vales, onOpen, filter, onFilterChange }: ListProps) 
                 setQuery('');
               }
             }}
-            placeholder="Código de barras, nome ou CPF…"
+            placeholder="Código, nome, CPF ou valor (ex: 150)…"
             className="flex-1 py-3 bg-transparent text-base focus:outline-none"
           />
         </div>

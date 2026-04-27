@@ -11,6 +11,7 @@ import { AvaliacoesAdmin } from './AvaliacoesAdmin';
 import { PrintArea } from './PrintArea';
 import { WhatsAppShareModal } from './WhatsAppShareModal';
 import { ToastStack, type ToastMsg } from './Toast';
+import { playSuccessSound } from '@/lib/sound';
 import type { Vale, ClienteComAgregados } from '@/lib/types';
 import type { ReceiptData } from './Receipt';
 
@@ -97,6 +98,7 @@ export function AppShell({ initialVales, portalBase }: Props) {
       setPrint({ data: vale, mode });
       // Guarda pra abrir o modal de WhatsApp depois do afterprint
       setShareVale(vale);
+      playSuccessSound();
       pushToast('Vale criado e enviado para impressão', 'success', vale.id);
     },
     [pushToast],
@@ -113,6 +115,7 @@ export function AppShell({ initialVales, portalBase }: Props) {
       if (!r.ok || !j.vale) throw new Error(j.error || 'Falha ao abater.');
       setVales((cur) => cur.map((v) => (v.id === j.vale!.id ? j.vale! : v)));
       setDetail(j.vale);
+      playSuccessSound();
       pushToast(`Abatido. Saldo: R$ ${j.vale.saldo.toFixed(2).replace('.', ',')}`, 'success');
     } catch (e) {
       pushToast((e as Error).message, 'error');
