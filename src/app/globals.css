@@ -150,8 +150,8 @@
   /* Cada via tem seu próprio tamanho de página exato — bater certinho
      com a fita térmica 80mm e não desperdiçar papel.
      A via do cliente é maior (tem QR + barcode no rodapé). */
-  @page cliente { size: 80mm 195mm; margin: 0; }
-  @page loja    { size: 80mm 135mm; margin: 0; }
+  @page cliente { size: 80mm 200mm; margin: 0; }
+  @page loja    { size: 80mm 130mm; margin: 0; }
   /* Fallback (caso o browser não respeite @page nomeado) */
   @page { size: 80mm 200mm; margin: 0; }
 
@@ -180,23 +180,22 @@
     margin-bottom: 1px;
   }
   .receipt .brand-sub { font-size: 8pt; margin-bottom: 8px; }
-  .receipt p { margin-bottom: 6px; }
-  .receipt .divider { margin: 6px 0; }
-  .receipt .field-line { margin-bottom: 5px; }
-  .receipt .date { margin-top: 8px; font-size: 9pt; }
-  .receipt .sign { margin-top: 14px; font-size: 9pt; }
+  .receipt p { margin-bottom: 5px; }
+  .receipt .divider { margin: 5px 0; }
+  .receipt .field-line { margin-bottom: 4px; }
+  .receipt .date { margin-top: 6px; font-size: 9pt; }
+  .receipt .sign { margin-top: 10px; font-size: 9pt; }
 
   /* Códigos compactados pra caber */
-  .receipt .codes { margin-top: 8px; gap: 5px; }
-  .receipt .qr-canvas { width: 30mm; height: 30mm; }
+  .receipt .codes { margin-top: 6px; gap: 4px; }
+  .receipt .qr-canvas { width: 28mm; height: 28mm; }
   .receipt .qr-caption { font-size: 7pt; margin-top: 1px; }
-  .receipt .barcode-svg { max-width: 64mm; }
+  .receipt .barcode-svg { max-width: 60mm; }
   .receipt .barcode-block .code-label { font-size: 8.5pt; }
-  .receipt .footer { margin-top: 10px; font-size: 7.5pt; }
 
   .print-receipt {
     width: 80mm;
-    padding: 3mm 5mm 4mm;
+    padding: 3mm 4mm 3mm;
     box-sizing: border-box;
     page-break-after: always;
     break-after: page;

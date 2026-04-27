@@ -112,9 +112,6 @@ export function Receipt({ data, via, portalBase, barcodeOpts, qrSize }: Props) {
           </div>
         </>
       )}
-
-      <hr className="divider" />
-      <div className="footer">Lulu Arteira · Brechó Infantil</div>
     </div>
   );
 }
