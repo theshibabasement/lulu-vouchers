@@ -180,38 +180,35 @@ export function NovaVendaForm({ onCreated, onError, portalBase }: Props) {
               disabled={submitting}
               className="lulu-btn-secondary disabled:opacity-60"
             >
-              Salvar + só cliente
+              Imprimir só via do cliente
             </button>
             <button
               onClick={() => submit('loja')}
               disabled={submitting}
               className="lulu-btn-secondary disabled:opacity-60"
             >
-              Salvar + só loja
+              Imprimir só via da loja
             </button>
           </div>
-        </div>
-
-        <div className="mt-5 p-3 rounded-md bg-paper-tint border-l-4 border-lulu-cyan text-xs text-ink-soft leading-relaxed">
-          <b className="text-ink">Recorte automático:</b> a MP-4200 TH só corta entre as
-          vias se o driver do Windows estiver em <b>"Page end cut"</b> /{' '}
-          <b>"Após cada página"</b>. Configure em{' '}
-          <i>Painel de Controle → Impressoras → MP-4200 TH → Preferências</i>.
         </div>
       </section>
 
       <aside className="lg:sticky lg:top-6">
-        <div className="text-xs font-bold uppercase tracking-[0.18em] text-ink-soft mb-3 flex items-center gap-2">
-          Pré-visualização (via do cliente)
-          <span className="flex-1 h-px bg-line"></span>
-        </div>
-        <div className="bg-white max-w-[340px] mx-auto p-5 rounded shadow-lg border-2 border-line">
-          <Receipt
-            data={previewData}
-            via="cliente"
-            portalBase={portalBase}
-            barcodeOpts={{ width: 1.4, height: 36 }}
-          />
+        <div className="lulu-card p-7">
+          <h2 className="font-display text-2xl text-lulu-magenta mb-1">
+            Pré-visualização
+          </h2>
+          <p className="text-sm text-ink-soft mb-5">
+            Como a via do cliente vai sair na impressora.
+          </p>
+          <div className="bg-white max-w-[340px] mx-auto p-5 rounded shadow-md border-2 border-line">
+            <Receipt
+              data={previewData}
+              via="cliente"
+              portalBase={portalBase}
+              barcodeOpts={{ width: 1.4, height: 36 }}
+            />
+          </div>
         </div>
       </aside>
     </div>
