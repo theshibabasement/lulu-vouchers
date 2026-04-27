@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { formatDate, formatDateTime, whatsappLink } from '@/lib/format';
+import { formatCPF, formatDate, formatDateTime, whatsappLink } from '@/lib/format';
 import type { Avaliacao, AvaliacaoStatus } from '@/lib/types';
 
 const STATUS_LABEL: Record<AvaliacaoStatus, string> = {
@@ -192,6 +192,33 @@ function AvaliacaoCard({
     minute: '2-digit',
   });
 
+  function firstName(n: string): string {
+    return n.split(/\s+/)[0] || n;
+  }
+
+  function buildConfirmationText(): string {
+    const tamanhos = a.tamanhos.length > 0 ? `\n👗 Tamanhos: ${a.tamanhos.join(', ')}` : '';
+    const pecas = a.qtdPecas ? `\n📦 ${a.qtdPecas} peças (aproximado)` : '';
+    return [
+      `Oi ${firstName(a.nome)}! 🩷 Aqui é a Lulu Arteira.`,
+      ``,
+      `Tua avaliação tá confirmada:`,
+      `📅 ${formatDate(a.dataHora)}`,
+      `🕘 ${hora}`,
+      `${pecas}${tamanhos}`,
+      ``,
+      `Te esperamos! ✨`,
+    ].join('\n');
+  }
+
+  async function confirmarComWa() {
+    await onStatus('confirmada');
+    if (wa) {
+      const url = `${wa}?text=${encodeURIComponent(buildConfirmationText())}`;
+      window.open(url, '_blank', 'noopener,noreferrer');
+    }
+  }
+
   return (
     <div className="bg-paper rounded-md p-4 border-2 border-line">
       <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -201,8 +228,13 @@ function AvaliacaoCard({
             <span className="font-bold text-ink truncate">{a.nome}</span>
           </div>
           <div className="text-xs text-ink-soft mt-0.5">
-            {a.cpf ? a.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4') : 'sem CPF'}
+            {a.cpf ? formatCPF(a.cpf) : 'sem CPF'}
             {a.qtdPecas ? ` · ${a.qtdPecas} peças` : ''}
+            {!a.whatsapp && (
+              <span className="ml-2 text-lulu-heart-red font-bold">
+                · sem WhatsApp
+              </span>
+            )}
           </div>
           {a.tamanhos.length > 0 && (
             <div className="flex flex-wrap gap-1 mt-2">
@@ -224,9 +256,22 @@ function AvaliacaoCard({
 
       <div className="flex flex-wrap gap-2 mt-3">
         {a.status === 'pendente' && (
-          <button onClick={() => onStatus('confirmada')} className="text-xs font-bold px-3 py-1.5 rounded-full border-2 border-lulu-mint bg-paper text-ink hover:bg-lulu-mint/30 transition">
-            Confirmar
-          </button>
+          wa ? (
+            <button
+              onClick={confirmarComWa}
+              className="text-xs font-bold px-3 py-1.5 rounded-full border-2 border-ink bg-lulu-mint text-ink shadow-sticker hover:translate-y-[-1px] transition"
+            >
+              ✓ Confirmar + WhatsApp
+            </button>
+          ) : (
+            <button
+              onClick={() => onStatus('confirmada')}
+              className="text-xs font-bold px-3 py-1.5 rounded-full border-2 border-lulu-mint bg-paper text-ink hover:bg-lulu-mint/30 transition"
+              title="Cliente sem WhatsApp — confirma sem notificar"
+            >
+              Confirmar
+            </button>
+          )
         )}
         {(a.status === 'pendente' || a.status === 'confirmada') && (
           <>
@@ -246,9 +291,9 @@ function AvaliacaoCard({
             href={wa}
             target="_blank"
             rel="noreferrer"
-            className="text-xs font-bold px-3 py-1.5 rounded-full border-2 border-ink/15 bg-lulu-mint text-ink hover:border-ink/40 transition ml-auto"
+            className="text-xs font-bold px-3 py-1.5 rounded-full border-2 border-ink/15 bg-paper text-ink hover:bg-lulu-mint/30 hover:border-ink/40 transition ml-auto"
           >
-            WhatsApp
+            Abrir conversa
           </a>
         )}
         <button onClick={onRemove} className="text-xs font-bold px-3 py-1.5 rounded-full border-2 border-line bg-paper text-ink-mute hover:text-lulu-heart-red hover:border-lulu-heart-red transition">

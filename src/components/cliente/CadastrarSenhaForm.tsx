@@ -29,10 +29,16 @@ export function CadastrarSenhaForm({ onDone, onCancel }: Props) {
       const r = await fetch('/api/cliente/auth/cadastrar-senha', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
+        credentials: 'same-origin',
         body: JSON.stringify({ senha }),
       });
       const j = (await r.json().catch(() => ({}))) as { error?: string };
-      if (!r.ok) throw new Error(j.error || 'Falha ao salvar.');
+      if (!r.ok) {
+        if (r.status === 401) {
+          throw new Error('Sessão expirou. Volta na página inicial e escaneia o QR de novo 🩷');
+        }
+        throw new Error(j.error || `Erro (HTTP ${r.status})`);
+      }
       onDone();
     } catch (e) {
       setErr((e as Error).message);

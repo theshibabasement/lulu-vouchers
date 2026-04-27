@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { formatBRL, formatCPF, formatDate, formatDateTime, maskWhatsappInput, whatsappLink } from '@/lib/format';
+import { formatBRL, formatCPF, formatDate, formatDateTime, maskWhatsappInput, validateWhatsappBR, whatsappLink } from '@/lib/format';
 import type { Cliente, Vale } from '@/lib/types';
 
 interface Props {
@@ -99,6 +99,14 @@ export function ClienteDetail({ clienteId, onClose, onChanged, onOpenVale }: Pro
     if (!data) return;
     setSaving(true);
     setErr(null);
+    if (form.whatsapp && form.whatsapp.trim()) {
+      const v = validateWhatsappBR(form.whatsapp);
+      if (!v.valid) {
+        setErr(`WhatsApp: ${v.error}`);
+        setSaving(false);
+        return;
+      }
+    }
     try {
       const r = await fetch(`/api/clientes/${data.cliente.id}`, {
         method: 'PATCH',

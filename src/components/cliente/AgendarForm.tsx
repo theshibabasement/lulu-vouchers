@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { maskCPFInput, maskWhatsappInput } from '@/lib/format';
+import { maskCPFInput, maskWhatsappInput, validateWhatsappBR } from '@/lib/format';
 import { TAMANHOS_INFANTIS } from '@/lib/tamanhos';
 
 interface Props {
@@ -37,6 +37,10 @@ export function AgendarForm({ autenticado, nomePadrao, cpfPadrao, whatsappPadrao
     setErr(null);
     if (!nome.trim()) return setErr('Informa teu nome.');
     if (!data || !hora) return setErr('Escolhe data e horário.');
+    if (whatsapp.trim()) {
+      const v = validateWhatsappBR(whatsapp);
+      if (!v.valid) return setErr(`WhatsApp: ${v.error}`);
+    }
     const dataHora = new Date(`${data}T${hora}:00`).toISOString();
 
     setBusy(true);
@@ -66,6 +70,7 @@ export function AgendarForm({ autenticado, nomePadrao, cpfPadrao, whatsappPadrao
   }
 
   if (ok) {
+    const temWa = !!whatsapp.trim();
     return (
       <main className="min-h-screen bg-paper-sparkle px-4 py-10 grid place-items-center">
         <div className="max-w-md text-center bg-paper rounded-lg p-8 border-[3px] border-ink shadow-sticker-lg">
@@ -74,7 +79,9 @@ export function AgendarForm({ autenticado, nomePadrao, cpfPadrao, whatsappPadrao
             Avaliação solicitada!
           </h1>
           <p className="text-ink-soft mb-6">
-            A Lulu vai confirmar com você logo logo. Fica de olho no WhatsApp ✨
+            {temWa
+              ? 'A Lulu vai confirmar contigo logo logo pelo WhatsApp ✨'
+              : 'A Lulu recebeu teu pedido. Sem WhatsApp informado, te aguardamos no horário escolhido — ou passa na loja pra confirmar 🩷'}
           </p>
           <div className="grid gap-2">
             {autenticado ? (
@@ -247,7 +254,9 @@ export function AgendarForm({ autenticado, nomePadrao, cpfPadrao, whatsappPadrao
           </button>
 
           <p className="text-xs text-ink-mute text-center">
-            A Lulu confirma o horário pelo WhatsApp.
+            {whatsapp.trim()
+              ? 'A Lulu confirma o horário pelo WhatsApp.'
+              : 'Sem WhatsApp informado, te esperamos no horário escolhido.'}
           </p>
         </form>
       </div>

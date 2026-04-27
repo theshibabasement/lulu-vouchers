@@ -1,5 +1,6 @@
 import { withClient, withTx } from './db';
 import { upsertClienteTx, digitsOnly } from './clientes';
+import { validateWhatsappBR } from './format';
 import type { Avaliacao, AvaliacaoStatus } from './types';
 
 function rowToAvaliacao(r: Record<string, unknown>): Avaliacao {
@@ -99,13 +100,21 @@ export async function createAvaliacao(input: CreateAvaliacaoInput): Promise<Aval
   }
   const tamanhos = (input.tamanhos ?? []).filter((t) => t && t.trim());
 
+  // Valida WhatsApp se informado
+  let whatsappFormatted: string | null = null;
+  if (input.whatsapp && input.whatsapp.trim()) {
+    const v = validateWhatsappBR(input.whatsapp);
+    if (!v.valid) throw new Error(`WhatsApp inválido: ${v.error}`);
+    whatsappFormatted = v.formatted ?? input.whatsapp.trim();
+  }
+
   return withTx(async (c) => {
     let clienteId = input.clienteId ?? null;
     if (!clienteId && cpfDigits) {
       const cliente = await upsertClienteTx(c, {
         cpf: cpfDigits,
         nome,
-        whatsapp: input.whatsapp,
+        whatsapp: whatsappFormatted ?? undefined,
       });
       clienteId = cliente.id;
     }
@@ -117,7 +126,7 @@ export async function createAvaliacao(input: CreateAvaliacaoInput): Promise<Aval
         clienteId,
         nome,
         cpfDigits || null,
-        input.whatsapp ? input.whatsapp.trim() || null : null,
+        whatsappFormatted,
         data,
         input.qtdPecas ?? null,
         tamanhos,

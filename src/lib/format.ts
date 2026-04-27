@@ -71,6 +71,59 @@ export function whatsappLink(raw: string): string | null {
   return `https://wa.me/${e164}`;
 }
 
+/**
+ * Valida número de WhatsApp brasileiro.
+ * Aceita com ou sem prefixo 55 e com qualquer formatação.
+ * Retorna `e164` com 55 + DDD + número (12 ou 13 dígitos).
+ *
+ * NOTA: não checa se o número está REGISTRADO no WhatsApp — isso só é
+ * possível via WhatsApp Business API (paga) ou Twilio Lookup. Aqui
+ * validamos apenas o FORMATO brasileiro (DDD válido + 8 ou 9 dígitos
+ * + 9 obrigatório no início pra celular).
+ */
+export function validateWhatsappBR(raw: string): {
+  valid: boolean;
+  e164?: string;
+  formatted?: string;
+  error?: string;
+} {
+  const digits = (raw || '').replace(/\D/g, '');
+  if (!digits) return { valid: false, error: 'Informe o WhatsApp.' };
+
+  let local = digits;
+  if (digits.startsWith('55') && digits.length >= 12) {
+    local = digits.slice(2);
+  } else if (digits.length > 11) {
+    return { valid: false, error: 'Número muito longo.' };
+  }
+
+  if (local.length !== 10 && local.length !== 11) {
+    return {
+      valid: false,
+      error: 'Número inválido. Use DDD + número (ex: 54 99999-9999).',
+    };
+  }
+
+  const ddd = parseInt(local.slice(0, 2), 10);
+  if (ddd < 11 || ddd > 99) {
+    return { valid: false, error: 'DDD inválido.' };
+  }
+
+  // Celular brasileiro tem 9 dígitos no número e começa com 9
+  if (local.length === 11 && local[2] !== '9') {
+    return {
+      valid: false,
+      error: 'Celular brasileiro precisa começar com 9 (ex: 99999-9999).',
+    };
+  }
+
+  return {
+    valid: true,
+    e164: '55' + local,
+    formatted: maskWhatsappInput(local),
+  };
+}
+
 export function formatDate(iso: string): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, '0');

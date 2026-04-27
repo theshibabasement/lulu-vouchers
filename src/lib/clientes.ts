@@ -1,4 +1,5 @@
 import { withClient, withTx } from './db';
+import { validateWhatsappBR } from './format';
 import type { Cliente, ClienteComAgregados, ClienteAgregados, Vale, Transacao } from './types';
 import type { PoolClient } from 'pg';
 
@@ -181,6 +182,15 @@ export function digitsOnly(v: string): string {
   return v.replace(/\D/g, '');
 }
 
+/** Valida e normaliza WhatsApp. Lança se inválido. Retorna null se vazio. */
+function normalizeWhatsapp(raw: string | null | undefined): string | null {
+  const s = clean(raw);
+  if (!s) return null;
+  const v = validateWhatsappBR(s);
+  if (!v.valid) throw new Error(`WhatsApp inválido: ${v.error}`);
+  return v.formatted ?? s;
+}
+
 /**
  * UPSERT por CPF. Se cliente existe, atualiza apenas campos não-nulos
  * e mantém os já preenchidos (nunca sobrescreve com null).
@@ -211,7 +221,7 @@ export async function upsertClienteTx(
     [
       cpf,
       input.nome.trim(),
-      clean(input.whatsapp),
+      normalizeWhatsapp(input.whatsapp),
       clean(input.email),
       clean(input.endereco),
       clean(input.cidade),
@@ -251,7 +261,7 @@ export async function updateCliente(
   }
 
   set('nome', 'nome', (v) => (v as string).trim());
-  set('whatsapp', 'whatsapp', (v) => clean(v as string));
+  set('whatsapp', 'whatsapp', (v) => normalizeWhatsapp(v as string));
   set('email', 'email', (v) => clean(v as string));
   set('endereco', 'endereco', (v) => clean(v as string));
   set('cidade', 'cidade', (v) => clean(v as string));
