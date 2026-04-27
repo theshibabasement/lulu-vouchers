@@ -28,10 +28,13 @@ export interface TopCliente {
   qtdVales: number;
 }
 
+export type PeriodoTop = 'mes' | '12m' | 'total';
+
 export interface DashboardData {
   geral: MetricasGerais;
   porMes: MetricasMensal[]; // últimos 12 meses
-  topClientes: TopCliente[]; // top 10
+  topClientes: TopCliente[]; // top 10 do período pedido
+  topPeriodo: PeriodoTop;
   hoje: {
     valesEmitidos: number;
     valorEmitido: number;
@@ -40,7 +43,67 @@ export interface DashboardData {
   };
 }
 
-export async function getDashboard(): Promise<DashboardData> {
+function topClientesQuery(periodo: PeriodoTop): { sql: string; params: unknown[] } {
+  if (periodo === 'mes') {
+    return {
+      sql: `
+        SELECT
+          c.id, c.cpf, c.nome,
+          COALESCE(SUM(v.valor_original), 0) AS total_emitido,
+          COUNT(v.id) AS qtd_vales
+        FROM clientes c
+        LEFT JOIN vales v ON v.cliente_id = c.id
+          AND v.deletado_em IS NULL
+          AND v.criado_em >= date_trunc('month', NOW())
+          AND v.criado_em <  date_trunc('month', NOW()) + INTERVAL '1 month'
+        WHERE c.deletado_em IS NULL
+        GROUP BY c.id
+        HAVING COUNT(v.id) > 0
+        ORDER BY total_emitido DESC, qtd_vales DESC
+        LIMIT 10
+      `,
+      params: [],
+    };
+  }
+  if (periodo === '12m') {
+    return {
+      sql: `
+        SELECT
+          c.id, c.cpf, c.nome,
+          COALESCE(SUM(v.valor_original), 0) AS total_emitido,
+          COUNT(v.id) AS qtd_vales
+        FROM clientes c
+        LEFT JOIN vales v ON v.cliente_id = c.id
+          AND v.deletado_em IS NULL
+          AND v.criado_em >= NOW() - INTERVAL '12 months'
+        WHERE c.deletado_em IS NULL
+        GROUP BY c.id
+        HAVING COUNT(v.id) > 0
+        ORDER BY total_emitido DESC, qtd_vales DESC
+        LIMIT 10
+      `,
+      params: [],
+    };
+  }
+  return {
+    sql: `
+      SELECT
+        c.id, c.cpf, c.nome,
+        COALESCE(SUM(v.valor_original), 0) AS total_emitido,
+        COUNT(v.id) AS qtd_vales
+      FROM clientes c
+      LEFT JOIN vales v ON v.cliente_id = c.id AND v.deletado_em IS NULL
+      WHERE c.deletado_em IS NULL
+      GROUP BY c.id
+      HAVING COUNT(v.id) > 0
+      ORDER BY total_emitido DESC, qtd_vales DESC
+      LIMIT 10
+    `,
+    params: [],
+  };
+}
+
+export async function getDashboard(periodo: PeriodoTop = 'total'): Promise<DashboardData> {
   return withClient(async (c) => {
     const [geralRes, porMesRes, topRes, hojeEmitidosRes, hojeAbatidosRes] = await Promise.all([
       c.query(`
@@ -67,19 +130,10 @@ export async function getDashboard(): Promise<DashboardData> {
         GROUP BY mes
         ORDER BY mes ASC
       `),
-      c.query(`
-        SELECT
-          c.id, c.cpf, c.nome,
-          COALESCE(SUM(v.valor_original), 0) AS total_emitido,
-          COUNT(v.id) AS qtd_vales
-        FROM clientes c
-        LEFT JOIN vales v ON v.cliente_id = c.id AND v.deletado_em IS NULL
-        WHERE c.deletado_em IS NULL
-        GROUP BY c.id
-        HAVING COUNT(v.id) > 0
-        ORDER BY total_emitido DESC, qtd_vales DESC
-        LIMIT 10
-      `),
+      (() => {
+        const q = topClientesQuery(periodo);
+        return c.query(q.sql, q.params);
+      })(),
       c.query(`
         SELECT
           COUNT(id) AS qtd,
@@ -148,6 +202,7 @@ export async function getDashboard(): Promise<DashboardData> {
         qtdAvaliacoesConfirmadas: Number(g.qtd_confirmadas),
       },
       porMes,
+      topPeriodo: periodo,
       topClientes: topRes.rows.map((r) => ({
         id: Number(r.id),
         nome: r.nome as string,

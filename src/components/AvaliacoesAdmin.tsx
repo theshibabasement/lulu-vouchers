@@ -36,6 +36,7 @@ export function AvaliacoesAdmin({ onToast }: Props) {
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
   });
   const [showHorarios, setShowHorarios] = useState(false);
+  const [query, setQuery] = useState('');
 
   async function load() {
     setLoading(true);
@@ -54,24 +55,37 @@ export function AvaliacoesAdmin({ onToast }: Props) {
     load();
   }, []);
 
+  // Aplica busca por nome ou CPF (cross-cutting — afeta todas as views)
+  const buscaFiltrada = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return avaliacoes;
+    const qDigits = q.replace(/\D/g, '');
+    return avaliacoes.filter(
+      (a) =>
+        a.nome.toLowerCase().includes(q) ||
+        (qDigits && a.cpf && a.cpf.replace(/\D/g, '').includes(qDigits)) ||
+        (qDigits && a.whatsapp && a.whatsapp.replace(/\D/g, '').includes(qDigits)),
+    );
+  }, [avaliacoes, query]);
+
   const filtered = useMemo(() => {
     const now = Date.now();
     switch (filtro) {
       case 'pendentes':
-        return avaliacoes.filter((a) => a.status === 'pendente');
+        return buscaFiltrada.filter((a) => a.status === 'pendente');
       case 'hoje': {
         const start = new Date();
         start.setHours(0, 0, 0, 0);
         const end = new Date();
         end.setHours(23, 59, 59, 999);
-        return avaliacoes.filter((a) => {
+        return buscaFiltrada.filter((a) => {
           const t = new Date(a.dataHora).getTime();
           return t >= start.getTime() && t <= end.getTime();
         });
       }
       case 'calendario': {
         if (!selectedDay) return [];
-        return avaliacoes.filter((a) => {
+        return buscaFiltrada.filter((a) => {
           const d = new Date(a.dataHora);
           const p = (n: number) => String(n).padStart(2, '0');
           const k = `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
@@ -80,9 +94,39 @@ export function AvaliacoesAdmin({ onToast }: Props) {
       }
       case 'futuras':
       default:
-        return avaliacoes.filter((a) => new Date(a.dataHora).getTime() >= now - 1000 * 60 * 60);
+        return buscaFiltrada.filter((a) => new Date(a.dataHora).getTime() >= now - 1000 * 60 * 60);
     }
-  }, [avaliacoes, filtro, selectedDay]);
+  }, [buscaFiltrada, filtro, selectedDay]);
+
+  // Próximas 2h — útil pro dia a dia
+  const proximas2h = useMemo(() => {
+    const now = Date.now();
+    const limite = now + 2 * 60 * 60 * 1000;
+    return avaliacoes
+      .filter(
+        (a) =>
+          (a.status === 'confirmada' || a.status === 'pendente') &&
+          new Date(a.dataHora).getTime() >= now - 5 * 60 * 1000 &&
+          new Date(a.dataHora).getTime() <= limite,
+      )
+      .sort((a, b) => new Date(a.dataHora).getTime() - new Date(b.dataHora).getTime());
+  }, [avaliacoes]);
+
+  // Sumário do mês corrente
+  const sumarioMes = useMemo(() => {
+    const now = new Date();
+    const start = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const end = new Date(now.getFullYear(), now.getMonth() + 1, 1).getTime();
+    const doMes = avaliacoes.filter((a) => {
+      const t = new Date(a.dataHora).getTime();
+      return t >= start && t < end;
+    });
+    const c: Record<AvaliacaoStatus, number> = {
+      pendente: 0, confirmada: 0, realizada: 0, cancelada: 0, no_show: 0,
+    };
+    for (const a of doMes) c[a.status]++;
+    return { total: doMes.length, ...c };
+  }, [avaliacoes]);
 
   // Agrupa por dia
   const grouped = useMemo(() => {
@@ -129,6 +173,75 @@ export function AvaliacoesAdmin({ onToast }: Props) {
 
   return (
     <>
+      {/* Próximas 2h (alerta no topo) */}
+      {proximas2h.length > 0 && (
+        <div className="mb-5 rounded-lg bg-lulu-yellow/40 border-2 border-lulu-yellow p-4">
+          <div className="flex items-center gap-2 mb-2">
+            <span className="font-display font-bold text-ink">
+              Próximas 2 horas
+            </span>
+            <span className="text-[10px] font-bold uppercase tracking-wider text-ink-soft">
+              {proximas2h.length} agendamento{proximas2h.length === 1 ? '' : 's'}
+            </span>
+          </div>
+          <ul className="space-y-1.5">
+            {proximas2h.map((a) => {
+              const hora = new Date(a.dataHora).toLocaleTimeString('pt-BR', {
+                hour: '2-digit', minute: '2-digit',
+              });
+              return (
+                <li key={a.id} className="text-sm flex items-center gap-2 flex-wrap">
+                  <span className="font-mono font-bold text-lulu-purple">{hora}</span>
+                  <span className="font-bold text-ink">{a.nome}</span>
+                  <span className={`lulu-pill ${STATUS_TONE[a.status]}`}>
+                    {STATUS_LABEL[a.status]}
+                  </span>
+                  {!a.whatsapp && (
+                    <span className="text-[10px] font-bold text-lulu-heart-red uppercase tracking-wider">
+                      sem WhatsApp
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
+
+      {/* Sumário do mês corrente */}
+      <div className="mb-5 rounded-lg bg-paper border-2 border-line p-3 flex flex-wrap gap-3 items-center text-xs">
+        <span className="font-bold uppercase tracking-wider text-ink-soft">
+          Este mês:
+        </span>
+        <span className="text-ink"><b>{sumarioMes.total}</b> total</span>
+        <SummaryPill color="bg-lulu-yellow text-ink" label="pendentes" n={sumarioMes.pendente} />
+        <SummaryPill color="bg-lulu-mint text-ink" label="confirmadas" n={sumarioMes.confirmada} />
+        <SummaryPill color="bg-lulu-purple-soft text-lulu-purple" label="realizadas" n={sumarioMes.realizada} />
+        <SummaryPill color="bg-lulu-cheek-pink text-lulu-heart-red" label="canceladas" n={sumarioMes.cancelada + sumarioMes.no_show} />
+      </div>
+
+      {/* Busca */}
+      <div className="mb-4 flex items-center gap-2 bg-paper rounded-md border-2 border-line focus-within:border-lulu-magenta focus-within:ring-4 focus-within:ring-lulu-magenta/15 px-4 transition shadow-sm">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-ink-mute">
+          <circle cx="11" cy="11" r="7"></circle>
+          <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+        </svg>
+        <input
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          placeholder="Buscar por nome, CPF ou WhatsApp…"
+          className="flex-1 py-3 bg-transparent text-base focus:outline-none"
+        />
+        {query && (
+          <button
+            onClick={() => setQuery('')}
+            className="text-xs font-bold text-ink-mute hover:text-ink"
+          >
+            ✕ limpar
+          </button>
+        )}
+      </div>
+
       <div className="flex flex-wrap gap-2 mb-5">
         {(
           [
@@ -380,5 +493,16 @@ function AvaliacaoCard({
         </button>
       </div>
     </div>
+  );
+}
+
+function SummaryPill({ color, label, n }: { color: string; label: string; n: number }) {
+  return (
+    <span
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full font-bold ${color}`}
+    >
+      <span className="text-sm">{n}</span>
+      <span className="text-[10px] uppercase tracking-wider opacity-90">{label}</span>
+    </span>
   );
 }

@@ -125,8 +125,8 @@ export function NovaVendaForm({
   const vistos = recentes.filter((v) => !v.deletadoEm).slice(0, 6);
 
   return (
-    <div className="grid lg:grid-cols-2 gap-8 items-start">
-      <div className="space-y-6">
+    <div className="grid lg:grid-cols-2 gap-8 items-stretch">
+      <div className="flex flex-col gap-6">
       <section className="lulu-card p-7">
         <h2 className="font-display text-2xl text-lulu-magenta mb-1">Dados da troca</h2>
         <p className="text-sm text-ink-soft mb-5">
@@ -214,7 +214,7 @@ export function NovaVendaForm({
         </div>
       </section>
 
-      <section className="lulu-card p-7">
+      <section className="lulu-card p-7 flex-1 flex flex-col min-h-0">
         <div className="flex items-baseline justify-between gap-3 mb-4">
           <h2 className="font-display text-2xl text-lulu-magenta">Vales recentes</h2>
           {recentes.length > 6 && (
@@ -232,7 +232,7 @@ export function NovaVendaForm({
             Nenhum vale ainda. Cria o primeiro aí ao lado 🩷
           </p>
         ) : (
-          <ul className="divide-y divide-line">
+          <ul className="divide-y divide-line flex-1 overflow-y-auto -mx-2">
             {vistos.map((v) => {
               const isUsed = v.saldo === 0;
               return (

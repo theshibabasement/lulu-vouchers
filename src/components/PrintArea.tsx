@@ -4,28 +4,32 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Receipt, type ReceiptData } from './Receipt';
 
+export type PrintMode = 'ambas' | 'cliente' | 'loja';
+
 interface Props {
+  /** Único vale ou lote. Lote sempre imprime "ambas" vias por vale. */
   data: ReceiptData | null;
-  mode: 'ambas' | 'cliente' | 'loja' | null;
+  lote?: ReceiptData[];
+  mode: PrintMode | null;
   portalBase: string;
   onAfterPrint: () => void;
 }
 
-export function PrintArea({ data, mode, portalBase, onAfterPrint }: Props) {
+export function PrintArea({ data, lote, mode, portalBase, onAfterPrint }: Props) {
   const ref = useRef<HTMLDivElement | null>(null);
   const [mounted, setMounted] = useState(false);
 
-  // Garante que document.body existe (SSR-safe)
   useEffect(() => {
     setMounted(true);
   }, []);
 
+  const items = lote && lote.length > 0 ? lote : data ? [data] : [];
+
   useEffect(() => {
-    if (!data || !mode) return;
+    if (items.length === 0 || !mode) return;
     if (mode === 'cliente') document.body.classList.add('print-only-cliente');
     if (mode === 'loja') document.body.classList.add('print-only-loja');
 
-    // Espera mais — QR Code/JsBarcode são async (canvas e SVG ops)
     const t = setTimeout(() => window.print(), 250);
 
     const cleanup = () => {
@@ -38,26 +42,29 @@ export function PrintArea({ data, mode, portalBase, onAfterPrint }: Props) {
       clearTimeout(t);
       window.removeEventListener('afterprint', cleanup);
     };
-  }, [data, mode, onAfterPrint]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [items.length, mode, onAfterPrint]);
 
-  if (!mounted || !data) return null;
+  if (!mounted || items.length === 0) return null;
 
-  // Portal pra document.body — print-area precisa ser filho DIRETO do body
-  // pra escapar do `body > *:not(.print-area) { display: none }` no print.
   return createPortal(
     <div className="print-area" ref={ref}>
-      <div className="print-receipt receipt" data-via="cliente">
-        <Receipt
-          data={data}
-          via="cliente"
-          portalBase={portalBase}
-          barcodeOpts={{ width: 2, height: 55 }}
-          qrSize={180}
-        />
-      </div>
-      <div className="print-receipt receipt" data-via="loja">
-        <Receipt data={data} via="loja" portalBase={portalBase} />
-      </div>
+      {items.map((d) => (
+        <div key={d.id}>
+          <div className="print-receipt receipt" data-via="cliente">
+            <Receipt
+              data={d}
+              via="cliente"
+              portalBase={portalBase}
+              barcodeOpts={{ width: 2, height: 55 }}
+              qrSize={180}
+            />
+          </div>
+          <div className="print-receipt receipt" data-via="loja">
+            <Receipt data={d} via="loja" portalBase={portalBase} />
+          </div>
+        </div>
+      ))}
     </div>,
     document.body,
   );

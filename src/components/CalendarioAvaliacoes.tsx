@@ -7,6 +7,8 @@ interface Props {
   avaliacoes: Avaliacao[];
   onSelectDay: (iso: string, dayAvaliacoes: Avaliacao[]) => void;
   selectedDayIso: string | null;
+  /** Quando true, dias com pelo menos uma avaliação sem WhatsApp ganham um pontinho de aviso. */
+  marcarSemWhatsapp?: boolean;
 }
 
 const DIAS = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
@@ -33,7 +35,12 @@ function corDoDia(items: Avaliacao[]): { bg: string; text: string; ring: string 
   return { bg: 'bg-lulu-cheek-pink', text: 'text-lulu-heart-red', ring: 'ring-lulu-cheek-pink' };
 }
 
-export function CalendarioAvaliacoes({ avaliacoes, onSelectDay, selectedDayIso }: Props) {
+export function CalendarioAvaliacoes({
+  avaliacoes,
+  onSelectDay,
+  selectedDayIso,
+  marcarSemWhatsapp = true,
+}: Props) {
   const today = useMemo(() => new Date(), []);
   const [cursor, setCursor] = useState<Date>(() => new Date(today.getFullYear(), today.getMonth(), 1));
 
@@ -132,6 +139,14 @@ export function CalendarioAvaliacoes({ avaliacoes, onSelectDay, selectedDayIso }
           const tone = corDoDia(items);
           const isToday = dayKey(cell.date) === dayKey(today);
           const isSelected = selectedDayIso === cell.key;
+          const temSemWa =
+            marcarSemWhatsapp &&
+            items.some(
+              (a) =>
+                !a.whatsapp &&
+                a.status !== 'cancelada' &&
+                a.status !== 'realizada',
+            );
 
           return (
             <button
@@ -152,6 +167,12 @@ export function CalendarioAvaliacoes({ avaliacoes, onSelectDay, selectedDayIso }
                 <span className="text-[9px] font-bold leading-none mt-0.5 px-1.5 py-0.5 rounded-full bg-ink/15">
                   {items.length}
                 </span>
+              )}
+              {temSemWa && (
+                <span
+                  className="absolute top-1 right-1 w-2 h-2 rounded-full bg-lulu-heart-red ring-1 ring-white"
+                  title="Algum agendamento sem WhatsApp"
+                />
               )}
             </button>
           );

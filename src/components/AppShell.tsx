@@ -41,7 +41,11 @@ export function AppShell({ initialVales, portalBase }: Props) {
   const [clientesFilter, setClientesFilter] = useState<'all' | 'deleted'>('all');
   const [detail, setDetail] = useState<Vale | null>(null);
   const [clienteDetailId, setClienteDetailId] = useState<number | null>(null);
-  const [print, setPrint] = useState<{ data: ReceiptData; mode: PrintMode } | null>(null);
+  const [print, setPrint] = useState<
+    | { data: ReceiptData; mode: PrintMode; lote?: undefined }
+    | { lote: ReceiptData[]; mode: PrintMode; data?: undefined }
+    | null
+  >(null);
   const [shareVale, setShareVale] = useState<Vale | null>(null);
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
   const [me, setMe] = useState<MeAdmin | null>(null);
@@ -261,6 +265,9 @@ export function AppShell({ initialVales, portalBase }: Props) {
         <ValesList
           vales={vales}
           onOpen={openDetail}
+          onPrintLote={(list) => {
+            setPrint({ lote: list, mode: 'ambas' });
+          }}
           filter={valesFilter}
           onFilterChange={(f) => {
             setValesFilter(f);
@@ -324,7 +331,8 @@ export function AppShell({ initialVales, portalBase }: Props) {
       />
 
       <PrintArea
-        data={print?.data ?? null}
+        data={print && 'data' in print && print.data ? print.data : null}
+        lote={print && 'lote' in print && print.lote ? print.lote : undefined}
         mode={print?.mode ?? null}
         portalBase={portalBase}
         onAfterPrint={() => setPrint(null)}
