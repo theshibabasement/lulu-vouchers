@@ -153,6 +153,41 @@ docker exec lulu-app node scripts/purge-deleted.mjs
 docker exec lulu-app node scripts/purge-deleted.mjs --apply
 ```
 
+### Aplicar migrações em DB existente
+
+O `db/init.sql` é **idempotente** — usa `CREATE TABLE IF NOT EXISTS` e
+`ALTER TABLE ADD COLUMN IF NOT EXISTS`. Mas só roda **automaticamente** quando
+o volume Postgres está vazio (entrypoint do Postgres). Em DB existente (após
+update), rode manualmente:
+
+```bash
+docker exec lulu-app node scripts/init-db.mjs
+```
+
+Aplica:
+- Extensão `pgcrypto` (pra `gen_random_bytes`)
+- Colunas novas: `vales.deletado_em`, `vales.cliente_id`, `clientes.portal_token`,
+  `clientes.senha_hash`, `clientes.portal_ativado_em`
+- Tabela `avaliacoes`
+- Backfill: cria registro de cliente pra cada CPF distinto, gera token pra todos
+
+Erro `column "deletado_em" does not exist` ao excluir vale = migração não rodou.
+
+### Sobre o portal_token (segurança do QR)
+
+Token do QR é gerado por `gen_random_bytes(18)` (Postgres `pgcrypto`) → 18 bytes
+criptograficamente aleatórios → 144 bits de entropia. **Não é sequencial nem
+incremental.** Brute force é impraticável: 2^144 ≈ 2,2 × 10^43 combinações.
+Comparável a UUID v4 (122 bits) e bem acima do recomendado (≥ 80 bits).
+
+Token pode ser rotacionado (invalida QR antigo) atualizando a coluna manualmente:
+
+```sql
+UPDATE clientes
+SET portal_token = encode(gen_random_bytes(18), 'base64')
+WHERE id = <id>;
+```
+
 ### Backup do banco
 
 O volume `lulu_pgdata` persiste os dados Postgres entre redeploys.

@@ -31,6 +31,8 @@ RUN apk add --no-cache curl tini \
 # Next standalone (server.js + node_modules mínimo bundled pelo Next)
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Public (logo, favicons) — Next standalone NÃO copia automaticamente
+COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 
 # Scripts utilitários (export, init-db) + schema SQL
 COPY --from=builder --chown=nextjs:nodejs /app/scripts ./scripts
