@@ -160,7 +160,7 @@ export async function upsertClienteTx(
   const res = await client.query(
     `
     INSERT INTO clientes (cpf, nome, whatsapp, email, endereco, cidade, observacoes, portal_token)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, encode(gen_random_bytes(18), 'base64'))
+    VALUES ($1, $2, $3, $4, $5, $6, $7, translate(encode(gen_random_bytes(18), 'base64'), '+/=', '-_'))
     ON CONFLICT (cpf) DO UPDATE SET
       nome          = EXCLUDED.nome,
       whatsapp      = COALESCE(EXCLUDED.whatsapp,    clientes.whatsapp),
@@ -168,7 +168,7 @@ export async function upsertClienteTx(
       endereco      = COALESCE(EXCLUDED.endereco,    clientes.endereco),
       cidade        = COALESCE(EXCLUDED.cidade,      clientes.cidade),
       observacoes   = COALESCE(EXCLUDED.observacoes, clientes.observacoes),
-      portal_token  = COALESCE(clientes.portal_token, encode(gen_random_bytes(18), 'base64')),
+      portal_token  = COALESCE(clientes.portal_token, translate(encode(gen_random_bytes(18), 'base64'), '+/=', '-_')),
       atualizado_em = NOW()
     RETURNING ${SELECT_COLS}
     `,

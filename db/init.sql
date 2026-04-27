@@ -31,10 +31,15 @@ CREATE INDEX IF NOT EXISTS idx_clientes_cpf   ON clientes(cpf);
 CREATE INDEX IF NOT EXISTS idx_clientes_nome  ON clientes(nome);
 CREATE INDEX IF NOT EXISTS idx_clientes_token ON clientes(portal_token);
 
--- Backfill de portal_token pros clientes sem
+-- Backfill de portal_token pros clientes sem (base64url — URL-safe)
 UPDATE clientes
-SET portal_token = encode(gen_random_bytes(18), 'base64')
+SET portal_token = translate(encode(gen_random_bytes(18), 'base64'), '+/=', '-_')
 WHERE portal_token IS NULL;
+
+-- Normaliza tokens já gerados em base64 padrão (com +/=) pra base64url
+UPDATE clientes
+SET portal_token = translate(portal_token, '+/=', '-_')
+WHERE portal_token ~ '[+/=]';
 
 -- ====================================================
 -- Vales
@@ -118,5 +123,5 @@ WHERE v.cpf = c.cpf AND v.cliente_id IS NULL;
 
 -- Garante token pra todos os clientes (inclusive os criados pelo backfill)
 UPDATE clientes
-SET portal_token = encode(gen_random_bytes(18), 'base64')
+SET portal_token = translate(encode(gen_random_bytes(18), 'base64'), '+/=', '-_')
 WHERE portal_token IS NULL;
