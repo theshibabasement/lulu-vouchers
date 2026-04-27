@@ -46,7 +46,7 @@ export function Receipt({ data, via, barcodeOpts }: Props) {
 
   return (
     <div className="receipt">
-      <div className="brand">Lulu Brechó</div>
+      <div className="brand">Lulu Arteira</div>
       <div className="brand-sub">Brechó Infantil</div>
       <hr className="divider" />
       <div className="via">— {via === 'cliente' ? 'Via do cliente' : 'Via da loja'} —</div>
@@ -55,11 +55,11 @@ export function Receipt({ data, via, barcodeOpts }: Props) {
       <div className="field-line"><span className="lbl">CPF:</span> {cpf}</div>
       <hr className="divider" />
       <p>
-        Declaro que por ter vendido produtos seminovos para Lulu Brechó, recebendo a
+        Declaro que por ter vendido produtos seminovos para Lulu Arteira, recebendo a
         quantia de <b>{valor}</b> em crédito para compras na loja.
       </p>
       <p>
-        Declaro que os itens vendidos à Lulu Brechó são de minha propriedade e estou
+        Declaro que os itens vendidos à Lulu Arteira são de minha propriedade e estou
         ciente que serão por ela a comercialização, sem que eu tenha participação no
         negócio.
       </p>
@@ -79,7 +79,7 @@ export function Receipt({ data, via, barcodeOpts }: Props) {
         </div>
       )}
       <hr className="divider" />
-      <div className="footer">Lulu Brechó · Brechó Infantil</div>
+      <div className="footer">Lulu Arteira · Brechó Infantil</div>
     </div>
   );
 }

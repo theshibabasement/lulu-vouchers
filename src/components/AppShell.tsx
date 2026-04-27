@@ -104,7 +104,7 @@ export function AppShell({ initialVales }: Props) {
       <header className="flex items-baseline justify-between flex-wrap gap-3 pb-4">
         <div>
           <div className="font-display text-3xl text-lulu-purple leading-none">
-            Lulu Brechó
+            Lulu Arteira
           </div>
           <div className="text-[11px] font-bold uppercase tracking-[0.2em] text-lulu-magenta mt-1">
             Brechó Infantil

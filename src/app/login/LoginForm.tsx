@@ -39,7 +39,7 @@ export default function LoginForm() {
     <main className="min-h-screen grid place-items-center px-6 py-12 bg-paper-sparkle">
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="font-display text-5xl text-lulu-purple mb-1">Lulu Brechó</h1>
+          <h1 className="font-display text-5xl text-lulu-purple mb-1">Lulu Arteira</h1>
           <p className="font-title text-sm uppercase tracking-[0.2em] text-lulu-magenta">
             Sistema de vales
           </p>

@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 
 export const metadata: Metadata = {
-  title: 'Lulu Brechó · Sistema de Vales',
+  title: 'Lulu Arteira · Sistema de Vales',
   description: 'Brechó Infantil — controle de vales',
 };
 

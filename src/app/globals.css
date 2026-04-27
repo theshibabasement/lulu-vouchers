@@ -85,7 +85,7 @@
 .receipt .field-line { margin-bottom: 6px; }
 .receipt .field-line .lbl { font-weight: 700; }
 .receipt p { margin-bottom: 8px; text-align: justify; hyphens: auto; }
-.receipt .date { margin-top: 12px; font-size: 10pt; }
+.receipt .date { margin-top: 12px; font-size: 10pt; text-align: center; }
 .receipt .sign { margin-top: 22px; text-align: center; font-size: 9.5pt; }
 .receipt .sign .line { border-top: 1px solid #000; margin: 0 auto 4px; width: 80%; }
 .receipt .footer {
@@ -99,7 +99,12 @@
   margin-top: 4px; margin-bottom: 6px;
 }
 .receipt .barcode { margin-top: 14px; text-align: center; }
-.receipt .barcode svg { max-width: 100%; height: auto; }
+.receipt .barcode svg {
+  display: block;
+  margin: 0 auto;
+  max-width: 100%;
+  height: auto;
+}
 .receipt .barcode .code-label {
   font-family: 'JetBrains Mono', monospace;
   font-size: 9pt; margin-top: 2px;
@@ -107,6 +112,11 @@
 }
 
 /* ------- Print ------- */
+/* Estratégia de impressão à prova de extensões/overlays:
+   esconde TUDO via visibility e mostra somente .print-area.
+   visibility:hidden preserva o layout mas zera a renderização de pixels,
+   o que neutraliza overlays injetados por extensões de browser
+   (Proton Pass, gerenciadores de senha etc). */
 .print-area { display: none; }
 
 @media print {
@@ -119,8 +129,15 @@
     padding: 0 !important;
     color: #000 !important;
   }
-  .app-shell, .lulu-overlay, .lulu-slide-over, .lulu-toast { display: none !important; }
-  .print-area { display: block !important; }
+  body * { visibility: hidden !important; }
+  .print-area, .print-area * { visibility: visible !important; }
+  .print-area {
+    display: block !important;
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 80mm;
+  }
   .receipt .brand { color: #000 !important; }
   .print-receipt {
     width: 80mm;
