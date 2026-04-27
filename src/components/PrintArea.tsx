@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { Receipt, type ReceiptData } from './Receipt';
 
 interface Props {
@@ -12,6 +13,12 @@ interface Props {
 
 export function PrintArea({ data, mode, portalBase, onAfterPrint }: Props) {
   const ref = useRef<HTMLDivElement | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  // Garante que document.body existe (SSR-safe)
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
     if (!data || !mode) return;
@@ -33,9 +40,11 @@ export function PrintArea({ data, mode, portalBase, onAfterPrint }: Props) {
     };
   }, [data, mode, onAfterPrint]);
 
-  if (!data) return null;
+  if (!mounted || !data) return null;
 
-  return (
+  // Portal pra document.body — print-area precisa ser filho DIRETO do body
+  // pra escapar do `body > *:not(.print-area) { display: none }` no print.
+  return createPortal(
     <div className="print-area" ref={ref}>
       <div className="print-receipt receipt" data-via="cliente">
         <Receipt
@@ -49,6 +58,7 @@ export function PrintArea({ data, mode, portalBase, onAfterPrint }: Props) {
       <div className="print-receipt receipt" data-via="loja">
         <Receipt data={data} via="loja" portalBase={portalBase} />
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
