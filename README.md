@@ -105,7 +105,7 @@ Clique em **Deploy**. O Dokploy vai:
 Caso o Postgres já exista e o init.sql não rode:
 
 ```bash
-docker exec lulu-app node scripts/init-db.mjs
+docker exec lulu-app node /app/scripts/init-db.mjs
 ```
 
 ---
@@ -114,15 +114,32 @@ docker exec lulu-app node scripts/init-db.mjs
 
 ### Login
 
-- URL pública → redireciona para `/login`.
-- Use `AUTH_USER` + `AUTH_PASSWORD`. Sessão dura 12h.
+- URL pública (`/`) → redireciona pra portal do cliente (`/cliente`).
+- Admin acessa em `/admin/login` com `AUTH_USER` + `AUTH_PASSWORD`. Sessão dura 12h.
+
+### Acessar o shell do container
+
+A imagem é `node:22-alpine`, que **não inclui `bash`**. Use `sh`:
+
+```bash
+docker exec -it lulu-app sh
+# já estará em /app
+```
+
+Pra rodar scripts diretamente sem shell interativo, use sempre o caminho absoluto:
+
+```bash
+docker exec lulu-app node /app/scripts/init-db.mjs
+docker exec lulu-app node /app/scripts/export.mjs
+docker exec lulu-app node /app/scripts/purge-deleted.mjs
+```
 
 ### Exportar dados
 
 Gera JSON + CSV no volume `/data/exports/`:
 
 ```bash
-docker exec lulu-app node scripts/export.mjs
+docker exec lulu-app node /app/scripts/export.mjs
 ```
 
 Saída:
@@ -147,10 +164,10 @@ continuam acessíveis pelo filtro **Excluídos**. Para apagar definitivamente:
 
 ```bash
 # DRY-RUN: lista o que seria apagado
-docker exec lulu-app node scripts/purge-deleted.mjs
+docker exec lulu-app node /app/scripts/purge-deleted.mjs
 
 # Apaga de verdade (cascade nas transações)
-docker exec lulu-app node scripts/purge-deleted.mjs --apply
+docker exec lulu-app node /app/scripts/purge-deleted.mjs --apply
 ```
 
 ### Aplicar migrações em DB existente
@@ -161,7 +178,7 @@ o volume Postgres está vazio (entrypoint do Postgres). Em DB existente (após
 update), rode manualmente:
 
 ```bash
-docker exec lulu-app node scripts/init-db.mjs
+docker exec lulu-app node /app/scripts/init-db.mjs
 ```
 
 Aplica:
