@@ -251,6 +251,9 @@ export function AppShell({ initialVales, portalBase }: Props) {
           onCreated={handleCreated}
           onError={(m) => pushToast(m, 'error')}
           portalBase={portalBase}
+          recentes={vales}
+          onOpenVale={openDetail}
+          onVerTodos={() => switchView('vales')}
         />
       )}
 

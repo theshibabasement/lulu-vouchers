@@ -2,16 +2,33 @@
 
 import { useState, useEffect, useRef, type KeyboardEvent } from 'react';
 import { Receipt } from './Receipt';
-import { isValidCPF, maskCPFInput, maskBRLInput, parseBRL } from '@/lib/format';
+import {
+  formatBRL,
+  formatDate,
+  isValidCPF,
+  maskCPFInput,
+  maskBRLInput,
+  parseBRL,
+} from '@/lib/format';
 import type { Cliente, Vale } from '@/lib/types';
 
 interface Props {
   onCreated: (vale: Vale, mode: 'ambas' | 'cliente' | 'loja') => void;
   onError: (msg: string) => void;
   portalBase: string;
+  recentes: Vale[];
+  onOpenVale: (id: string) => void;
+  onVerTodos: () => void;
 }
 
-export function NovaVendaForm({ onCreated, onError, portalBase }: Props) {
+export function NovaVendaForm({
+  onCreated,
+  onError,
+  portalBase,
+  recentes,
+  onOpenVale,
+  onVerTodos,
+}: Props) {
   const [nome, setNome] = useState('');
   const [cpf, setCpf] = useState('');
   const [valor, setValor] = useState('');
@@ -104,8 +121,12 @@ export function NovaVendaForm({ onCreated, onError, portalBase }: Props) {
     portalToken: 'preview',
   };
 
+  // Filtra deletados e pega só os 6 mais recentes
+  const vistos = recentes.filter((v) => !v.deletadoEm).slice(0, 6);
+
   return (
     <div className="grid lg:grid-cols-2 gap-8 items-start">
+      <div className="space-y-6">
       <section className="lulu-card p-7">
         <h2 className="font-display text-2xl text-lulu-magenta mb-1">Dados da troca</h2>
         <p className="text-sm text-ink-soft mb-5">
@@ -192,6 +213,62 @@ export function NovaVendaForm({ onCreated, onError, portalBase }: Props) {
           </div>
         </div>
       </section>
+
+      <section className="lulu-card p-7">
+        <div className="flex items-baseline justify-between gap-3 mb-4">
+          <h2 className="font-display text-2xl text-lulu-magenta">Vales recentes</h2>
+          {recentes.length > 6 && (
+            <button
+              onClick={onVerTodos}
+              className="text-xs font-bold uppercase tracking-wider text-ink-soft hover:text-lulu-magenta transition"
+            >
+              ver todos →
+            </button>
+          )}
+        </div>
+
+        {vistos.length === 0 ? (
+          <p className="text-sm text-ink-soft">
+            Nenhum vale ainda. Cria o primeiro aí ao lado 🩷
+          </p>
+        ) : (
+          <ul className="divide-y divide-line">
+            {vistos.map((v) => {
+              const isUsed = v.saldo === 0;
+              return (
+                <li key={v.id}>
+                  <button
+                    onClick={() => onOpenVale(v.id)}
+                    className="w-full flex items-center justify-between gap-3 py-3 hover:bg-paper-tint -mx-2 px-2 rounded transition text-left"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-ink truncate">{v.nome}</div>
+                      <div className="text-xs text-ink-soft mt-0.5 flex items-center gap-2 flex-wrap">
+                        <span className="font-mono">{v.id}</span>
+                        <span className="text-ink-mute">·</span>
+                        <span>{formatDate(v.criadoEm)}</span>
+                      </div>
+                    </div>
+                    <div className="text-right whitespace-nowrap">
+                      <div
+                        className={`font-display font-bold text-base ${
+                          isUsed ? 'text-ink-mute line-through' : 'text-lulu-magenta'
+                        }`}
+                      >
+                        {formatBRL(v.saldo)}
+                      </div>
+                      <div className="text-[10px] text-ink-mute uppercase tracking-wider">
+                        de {formatBRL(v.valorOriginal)}
+                      </div>
+                    </div>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+      </div>
 
       <aside className="lg:sticky lg:top-6">
         <div className="lulu-card p-7">
