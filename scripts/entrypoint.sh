@@ -1,7 +1,8 @@
 #!/bin/sh
-# Entrypoint do container — aplica schema (idempotente) antes de subir o server.
-# Se a migration falhar, loga e segue mesmo assim — o app tem fallback JSONL
-# pra leitura, então fica disponível mesmo com DB temporariamente fora.
+# Entrypoint do container.
+# 1. Aplica schema (idempotente) — falha não derruba app.
+# 2. Inicia loop de backup em background.
+# 3. Sobe o server.
 
 set -u
 
@@ -11,6 +12,9 @@ if node /app/scripts/init-db.mjs; then
 else
   echo "[entrypoint] WARN: init-db falhou — seguindo com fallback."
 fi
+
+echo "[entrypoint] iniciando loop de backup em background..."
+node /app/scripts/backup-loop.mjs &
 
 echo "[entrypoint] iniciando Next standalone..."
 exec node /app/server.js

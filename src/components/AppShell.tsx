@@ -258,6 +258,7 @@ export function AppShell({ initialVales, portalBase }: Props) {
 
       <ClienteDetail
         clienteId={clienteDetailId}
+        portalBase={portalBase}
         onClose={() => setClienteDetailId(null)}
         onChanged={() => refreshClientes()}
         onOpenVale={(id) => {

@@ -1,0 +1,26 @@
+{
+  "name": "Lulu Arteira · Brechó Infantil",
+  "short_name": "Lulu",
+  "description": "Sistema de vales da Lulu Arteira — emite, controla e consulta créditos da loja.",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#FFFDF8",
+  "theme_color": "#9B6FD4",
+  "lang": "pt-BR",
+  "icons": [
+    {
+      "src": "/lulu-logo.jpg",
+      "sizes": "192x192",
+      "type": "image/jpeg",
+      "purpose": "any"
+    },
+    {
+      "src": "/lulu-logo.jpg",
+      "sizes": "512x512",
+      "type": "image/jpeg",
+      "purpose": "any maskable"
+    }
+  ]
+}

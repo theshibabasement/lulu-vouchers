@@ -6,6 +6,7 @@ import type { Cliente, Vale } from '@/lib/types';
 
 interface Props {
   clienteId: number | null;
+  portalBase: string;
   onClose: () => void;
   onChanged: () => void;
   onOpenVale: (id: string) => void;
@@ -16,12 +17,13 @@ interface ClientePayload {
   vales: Vale[];
 }
 
-export function ClienteDetail({ clienteId, onClose, onChanged, onOpenVale }: Props) {
+export function ClienteDetail({ clienteId, portalBase, onClose, onChanged, onOpenVale }: Props) {
   const [data, setData] = useState<ClientePayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [regenerating, setRegenerating] = useState(false);
   const [form, setForm] = useState<Partial<Cliente>>({});
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -72,6 +74,42 @@ export function ClienteDetail({ clienteId, onClose, onChanged, onOpenVale }: Pro
       setErr((e as Error).message);
     } finally {
       setDeleting(false);
+    }
+  }
+
+  async function regenerarToken() {
+    if (!data || regenerating) return;
+    setRegenerating(true);
+    setErr(null);
+    try {
+      const r = await fetch(`/api/clientes/${data.cliente.id}/regenerar-token`, {
+        method: 'POST',
+      });
+      const j = (await r.json().catch(() => ({}))) as { cliente?: Cliente; error?: string };
+      if (!r.ok || !j.cliente) throw new Error(j.error || 'Falha ao regenerar.');
+      setData({ ...data, cliente: j.cliente });
+
+      // Monta link novo + msg + abre wa.me se cliente tem WhatsApp
+      const url = `${portalBase}/cliente/${encodeURIComponent(j.cliente.portalToken ?? '')}`;
+      const msg =
+        `Oi ${j.cliente.nome.split(' ')[0]}! Aqui é a Lulu Arteira.\n` +
+        `Geramos um novo link de acesso pra teus vales:\n${url}\n\n` +
+        `O link antigo (e a senha, se você tinha cadastrado) foram desativados ` +
+        `por segurança.`;
+      const wa = j.cliente.whatsapp ? whatsappLink(j.cliente.whatsapp) : null;
+      if (wa) {
+        const fullLink = `${wa}?text=${encodeURIComponent(msg)}`;
+        window.open(fullLink, '_blank', 'noopener,noreferrer');
+      } else {
+        // Sem WhatsApp — copia URL pra clipboard como fallback
+        navigator.clipboard.writeText(url).catch(() => {});
+        alert(`Novo link gerado e copiado:\n\n${url}`);
+      }
+      onChanged();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setRegenerating(false);
     }
   }
 
@@ -234,6 +272,30 @@ export function ClienteDetail({ clienteId, onClose, onChanged, onOpenVale }: Pro
                   </ul>
                 )}
               </Section>
+
+              {!cliente.deletadoEm && (
+                <Section title="Acesso ao portal">
+                  <p className="text-xs text-ink-soft mb-3">
+                    {cliente.temSenha
+                      ? 'Cliente tem senha cadastrada e acesso por QR.'
+                      : 'Cliente acessa por QR (senha não cadastrada ainda).'}
+                  </p>
+                  <button
+                    onClick={regenerarToken}
+                    disabled={regenerating}
+                    className="lulu-btn-secondary w-full disabled:opacity-60"
+                  >
+                    {regenerating ? 'Gerando…' : 'Gerar novo link de acesso'}
+                  </button>
+                  <p className="text-[11px] text-ink-mute mt-2 leading-relaxed">
+                    Use quando o cliente perder o recibo + esquecer a senha.
+                    O QR antigo e a senha cadastrada são invalidados.
+                    {cliente.whatsapp
+                      ? ' O novo link abre direto no WhatsApp.'
+                      : ' Sem WhatsApp cadastrado — o link será copiado.'}
+                  </p>
+                </Section>
+              )}
 
               {cliente.deletadoEm ? (
                 <Section title="Cliente excluído">

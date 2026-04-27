@@ -91,6 +91,28 @@ export async function getClienteByCpf(cpf: string): Promise<Cliente | null> {
   });
 }
 
+/**
+ * Rotaciona o portal_token e zera senha_hash. Usar quando cliente perde
+ * o QR + esqueceu senha. Após chamar, o vale antigo (com QR antigo) deixa
+ * de funcionar e o admin manda o novo link via WhatsApp.
+ */
+export async function regenerarPortalToken(id: number): Promise<Cliente> {
+  return withClient(async (c) => {
+    const r = await c.query(
+      `UPDATE clientes
+       SET portal_token = translate(encode(gen_random_bytes(18), 'base64'), '+/=', '-_'),
+           senha_hash = NULL,
+           portal_ativado_em = NULL,
+           atualizado_em = NOW()
+       WHERE id = $1 AND deletado_em IS NULL
+       RETURNING ${SELECT_COLS}`,
+      [id],
+    );
+    if (r.rows.length === 0) throw new Error('Cliente não encontrado.');
+    return rowToCliente(r.rows[0]);
+  });
+}
+
 export async function softDeleteCliente(id: number): Promise<void> {
   await withClient(async (c) => {
     const res = await c.query(
