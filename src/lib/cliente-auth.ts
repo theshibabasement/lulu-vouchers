@@ -41,7 +41,7 @@ export async function getCurrentCliente(): Promise<Cliente | null> {
     const r = await cli.query(
       `SELECT id, cpf, nome, whatsapp, email, endereco, cidade, observacoes,
               portal_token, senha_hash, portal_ativado_em, criado_em, atualizado_em
-       FROM clientes WHERE id = $1`,
+       FROM clientes WHERE id = $1 AND deletado_em IS NULL`,
       [session.clienteId],
     );
     return r.rows[0];
@@ -71,7 +71,7 @@ export async function loginViaToken(token: string): Promise<Cliente | null> {
     const r = await cli.query(
       `SELECT id, cpf, nome, whatsapp, email, endereco, cidade, observacoes,
               portal_token, senha_hash, portal_ativado_em, criado_em, atualizado_em
-       FROM clientes WHERE portal_token = $1`,
+       FROM clientes WHERE portal_token = $1 AND deletado_em IS NULL`,
       [token],
     );
     return r.rows[0];
@@ -108,7 +108,7 @@ export async function loginComSenha(cpf: string, senha: string): Promise<Cliente
     const r = await cli.query(
       `SELECT id, cpf, nome, whatsapp, email, endereco, cidade, observacoes,
               portal_token, senha_hash, portal_ativado_em, criado_em, atualizado_em
-       FROM clientes WHERE cpf = $1`,
+       FROM clientes WHERE cpf = $1 AND deletado_em IS NULL`,
       [cpfDigits],
     );
     return r.rows[0];

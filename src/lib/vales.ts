@@ -142,7 +142,7 @@ export async function createVale(input: CreateValeInput): Promise<Vale> {
     await c.query(
       `INSERT INTO vales (id, cliente_id, nome, cpf, valor_original, saldo, status, criado_em)
        VALUES ($1,$2,$3,$4,$5,$5,'ativo',$6)`,
-      [code, cliente.id, nome.trim(), cpf.trim(), valor, now],
+      [code, cliente.id, nome.trim(), cpfDigits, valor, now],
     );
     await c.query(
       `INSERT INTO transacoes (vale_id, tipo, valor, data, obs)
@@ -155,7 +155,7 @@ export async function createVale(input: CreateValeInput): Promise<Vale> {
       clienteId: cliente.id,
       portalToken: cliente.portalToken ?? null,
       nome: nome.trim(),
-      cpf: cpf.trim(),
+      cpf: cpfDigits,
       valorOriginal: valor,
       saldo: valor,
       status: 'ativo',

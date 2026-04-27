@@ -31,6 +31,13 @@ export function maskCPFInput(raw: string): string {
   return v;
 }
 
+/** Formata CPF (aceita só dígitos OU já formatado) → "000.000.000-00". */
+export function formatCPF(raw: string): string {
+  const d = (raw || '').replace(/\D/g, '');
+  if (d.length !== 11) return raw;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+}
+
 export function formatDateTime(iso: string): string {
   const d = new Date(iso);
   const pad = (n: number) => String(n).padStart(2, '0');

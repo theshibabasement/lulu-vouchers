@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import JsBarcode from 'jsbarcode';
-import { formatBRL, formatDateTime, maskBRLInput, parseBRL } from '@/lib/format';
+import { formatBRL, formatCPF, formatDateTime, maskBRLInput, parseBRL } from '@/lib/format';
 import type { Vale } from '@/lib/types';
 
 interface Props {
@@ -126,7 +126,7 @@ export function ValeDetail({ vale, onClose, onAbater, onReprint, onDelete }: Pro
 
           <Section title="Cliente">
             <Row k="Nome" v={vale.nome} />
-            <Row k="CPF" v={vale.cpf} />
+            <Row k="CPF" v={formatCPF(vale.cpf)} />
             <Row k="Código" v={<span className="font-mono text-xs">{vale.id}</span>} />
             <Row k="Criado em" v={formatDateTime(vale.criadoEm)} />
             <Row

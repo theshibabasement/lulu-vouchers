@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
 import { listClientesComAgregados, upsertCliente } from '@/lib/clientes';
 
-export async function GET() {
-  const clientes = await listClientesComAgregados();
+export async function GET(req: Request) {
+  const url = new URL(req.url);
+  const includeDeleted = url.searchParams.get('includeDeleted') === '1';
+  const clientes = await listClientesComAgregados({ includeDeleted });
   return NextResponse.json({ clientes });
 }
 

@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import JsBarcode from 'jsbarcode';
 import QRCode from 'qrcode';
-import { formatBRL, formatLongDate } from '@/lib/format';
+import { formatBRL, formatCPF, formatLongDate } from '@/lib/format';
 
 export interface ReceiptData {
   id: string;
@@ -60,7 +60,7 @@ export function Receipt({ data, via, portalBase, barcodeOpts, qrSize }: Props) {
   }, [data.portalToken, via, qrSize, portalBase]);
 
   const nome = data.nome || '_______________________________';
-  const cpf = data.cpf || '_______________';
+  const cpf = data.cpf ? formatCPF(data.cpf) : '_______________';
   const valor = data.valorOriginal > 0 ? formatBRL(data.valorOriginal) : '_______________';
   const id = data.id || 'LB••••••••••';
   const dateStr = formatLongDate(data.criadoEm);

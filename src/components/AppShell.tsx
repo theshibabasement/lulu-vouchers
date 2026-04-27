@@ -28,6 +28,7 @@ export function AppShell({ initialVales, portalBase }: Props) {
   const [vales, setVales] = useState<Vale[]>(initialVales);
   const [clientes, setClientes] = useState<ClienteComAgregados[]>([]);
   const [valesFilter, setValesFilter] = useState<Filter>('all');
+  const [clientesFilter, setClientesFilter] = useState<'all' | 'deleted'>('all');
   const [detail, setDetail] = useState<Vale | null>(null);
   const [clienteDetailId, setClienteDetailId] = useState<number | null>(null);
   const [print, setPrint] = useState<{ data: ReceiptData; mode: PrintMode } | null>(null);
@@ -56,16 +57,17 @@ export function AppShell({ initialVales, portalBase }: Props) {
     }
   }, [valesFilter]);
 
-  const refreshClientes = useCallback(async () => {
+  const refreshClientes = useCallback(async (filter: 'all' | 'deleted' = clientesFilter) => {
     try {
-      const r = await fetch('/api/clientes', { cache: 'no-store' });
+      const url = filter === 'deleted' ? '/api/clientes?includeDeleted=1' : '/api/clientes';
+      const r = await fetch(url, { cache: 'no-store' });
       if (!r.ok) return;
       const j = (await r.json()) as { clientes: ClienteComAgregados[] };
       setClientes(j.clientes);
     } catch {
       /* ignore */
     }
-  }, []);
+  }, [clientesFilter]);
 
   useEffect(() => {
     if (detail) {
@@ -228,7 +230,15 @@ export function AppShell({ initialVales, portalBase }: Props) {
       )}
 
       {view === 'clientes' && (
-        <ClientesList clientes={clientes} onOpen={(id) => setClienteDetailId(id)} />
+        <ClientesList
+          clientes={clientes}
+          onOpen={(id) => setClienteDetailId(id)}
+          filter={clientesFilter}
+          onFilterChange={(f) => {
+            setClientesFilter(f);
+            refreshClientes(f);
+          }}
+        />
       )}
 
       {view === 'avaliacoes' && (

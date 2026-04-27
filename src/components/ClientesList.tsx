@@ -1,26 +1,32 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { formatBRL, formatDate, whatsappLink } from '@/lib/format';
+import { formatBRL, formatCPF, formatDate, whatsappLink } from '@/lib/format';
 import type { ClienteComAgregados } from '@/lib/types';
 
 type SortKey = 'nome' | 'qtd' | 'gasto' | 'recente';
+type ClientesFilter = 'all' | 'deleted';
 
 interface Props {
   clientes: ClienteComAgregados[];
   onOpen: (id: number) => void;
+  filter: ClientesFilter;
+  onFilterChange: (f: ClientesFilter) => void;
 }
 
-export function ClientesList({ clientes, onOpen }: Props) {
+export function ClientesList({ clientes, onOpen, filter, onFilterChange }: Props) {
   const [query, setQuery] = useState('');
   const [sort, setSort] = useState<SortKey>('nome');
 
   const filtered = useMemo(() => {
     const q = query.toLowerCase().trim();
     const qDigits = q.replace(/\D/g, '');
-    let list = clientes;
+    let list =
+      filter === 'deleted'
+        ? clientes.filter((c) => !!c.deletadoEm)
+        : clientes.filter((c) => !c.deletadoEm);
     if (q) {
-      list = clientes.filter(
+      list = list.filter(
         (c) =>
           c.nome.toLowerCase().includes(q) ||
           (qDigits && c.cpf.replace(/\D/g, '').includes(qDigits)) ||
@@ -44,7 +50,7 @@ export function ClientesList({ clientes, onOpen }: Props) {
       }
     });
     return sorted;
-  }, [clientes, query, sort]);
+  }, [clientes, query, sort, filter]);
 
   return (
     <>
@@ -83,6 +89,27 @@ export function ClientesList({ clientes, onOpen }: Props) {
             </button>
           ))}
         </div>
+      </div>
+
+      <div className="flex gap-1.5 mb-4">
+        {(
+          [
+            ['all', 'Ativos'],
+            ['deleted', 'Excluídos'],
+          ] as const
+        ).map(([k, label]) => (
+          <button
+            key={k}
+            onClick={() => onFilterChange(k)}
+            className={`px-4 py-2 rounded-full text-xs font-bold border-2 transition ${
+              filter === k
+                ? 'bg-lulu-purple text-white border-lulu-purple'
+                : 'bg-paper text-ink-soft border-line hover:border-ink-mute'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {filtered.length === 0 ? (
@@ -124,18 +151,28 @@ function ClienteCard({
   onOpen: (id: number) => void;
 }) {
   const wa = cliente.whatsapp ? whatsappLink(cliente.whatsapp) : null;
+  const isDeleted = !!cliente.deletadoEm;
 
   return (
-    <div className="bg-paper rounded-md p-5 border-2 border-line shadow-sm hover:-translate-y-0.5 hover:border-lulu-purple-soft hover:shadow-md transition">
+    <div
+      className={`bg-paper rounded-md p-5 border-2 border-line shadow-sm hover:-translate-y-0.5 hover:border-lulu-purple-soft hover:shadow-md transition ${
+        isDeleted ? 'opacity-60' : ''
+      }`}
+    >
       <button
         onClick={() => onOpen(cliente.id)}
         className="text-left w-full"
       >
+        {isDeleted && (
+          <div className="lulu-pill bg-lulu-cheek-pink text-lulu-heart-red mb-2">
+            Excluído
+          </div>
+        )}
         <div className="font-bold text-base text-ink leading-tight">
           {cliente.nome}
         </div>
         <div className="text-sm text-ink-soft mt-0.5 font-mono">
-          {cliente.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}
+          {formatCPF(cliente.cpf)}
         </div>
 
         <div className="grid grid-cols-3 gap-2 mt-3 text-center">

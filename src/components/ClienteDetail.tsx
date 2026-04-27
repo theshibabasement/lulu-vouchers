@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { formatBRL, formatDate, formatDateTime, maskWhatsappInput, whatsappLink } from '@/lib/format';
+import { formatBRL, formatCPF, formatDate, formatDateTime, maskWhatsappInput, whatsappLink } from '@/lib/format';
 import type { Cliente, Vale } from '@/lib/types';
 
 interface Props {
@@ -20,6 +20,8 @@ export function ClienteDetail({ clienteId, onClose, onChanged, onOpenVale }: Pro
   const [data, setData] = useState<ClientePayload | null>(null);
   const [loading, setLoading] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState<Partial<Cliente>>({});
   const [saving, setSaving] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -56,6 +58,42 @@ export function ClienteDetail({ clienteId, onClose, onChanged, onOpenVale }: Pro
   }, [clienteId, onClose]);
 
   if (clienteId === null) return null;
+
+  async function doDelete() {
+    if (!data || deleting) return;
+    setDeleting(true);
+    try {
+      const r = await fetch(`/api/clientes/${data.cliente.id}`, { method: 'DELETE' });
+      const j = (await r.json().catch(() => ({}))) as { error?: string };
+      if (!r.ok) throw new Error(j.error || 'Falha ao excluir.');
+      onChanged();
+      onClose();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setDeleting(false);
+    }
+  }
+
+  async function doRestore() {
+    if (!data || deleting) return;
+    setDeleting(true);
+    try {
+      const r = await fetch(`/api/clientes/${data.cliente.id}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ action: 'restore' }),
+      });
+      const j = (await r.json().catch(() => ({}))) as { error?: string };
+      if (!r.ok) throw new Error(j.error || 'Falha ao restaurar.');
+      onChanged();
+      onClose();
+    } catch (e) {
+      setErr((e as Error).message);
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   async function save() {
     if (!data) return;
@@ -134,7 +172,7 @@ export function ClienteDetail({ clienteId, onClose, onChanged, onOpenVale }: Pro
               </div>
 
               <Section title="Dados pessoais">
-                <Row k="CPF" v={<span className="font-mono">{cliente.cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4')}</span>} />
+                <Row k="CPF" v={<span className="font-mono">{formatCPF(cliente.cpf)}</span>} />
                 <Row k="WhatsApp" v={cliente.whatsapp || '—'} />
                 <Row k="E-mail" v={cliente.email || '—'} />
                 <Row k="Endereço" v={cliente.endereco || '—'} />
@@ -188,6 +226,55 @@ export function ClienteDetail({ clienteId, onClose, onChanged, onOpenVale }: Pro
                   </ul>
                 )}
               </Section>
+
+              {cliente.deletadoEm ? (
+                <Section title="Cliente excluído">
+                  <p className="text-xs text-ink-soft mb-3">
+                    Soft delete em {formatDateTime(cliente.deletadoEm)}.
+                  </p>
+                  <button
+                    onClick={doRestore}
+                    disabled={deleting}
+                    className="lulu-btn-accent w-full disabled:opacity-60"
+                  >
+                    {deleting ? 'Restaurando…' : 'Restaurar cliente'}
+                  </button>
+                </Section>
+              ) : (
+                <Section title="Excluir cliente">
+                  {!confirmDelete ? (
+                    <button
+                      onClick={() => setConfirmDelete(true)}
+                      className="w-full px-4 py-3 rounded-md font-bold text-sm border-2 border-lulu-heart-red text-lulu-heart-red bg-paper hover:bg-lulu-cheek-pink/20 transition"
+                    >
+                      Excluir este cliente
+                    </button>
+                  ) : (
+                    <div className="space-y-2">
+                      <p className="text-xs text-ink-soft">
+                        O cliente some das listagens (soft delete). Os vales
+                        existentes não são afetados. Pode restaurar depois.
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button
+                          onClick={() => setConfirmDelete(false)}
+                          disabled={deleting}
+                          className="lulu-btn-secondary"
+                        >
+                          Cancelar
+                        </button>
+                        <button
+                          onClick={doDelete}
+                          disabled={deleting}
+                          className="px-4 py-3 rounded-md font-display font-bold text-base border-[3px] border-ink shadow-sticker bg-lulu-heart-red text-white active:translate-y-[2px] active:shadow-none transition disabled:opacity-60"
+                        >
+                          {deleting ? 'Excluindo…' : 'Confirmar exclusão'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </Section>
+              )}
             </>
           )}
 

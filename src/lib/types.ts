@@ -35,6 +35,7 @@ export interface Cliente {
   portalToken?: string | null;
   temSenha?: boolean;
   portalAtivadoEm?: string | null;
+  deletadoEm?: string | null;
   criadoEm: string;
   atualizadoEm: string;
 }

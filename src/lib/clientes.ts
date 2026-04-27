@@ -15,6 +15,7 @@ function rowToCliente(r: Record<string, unknown>): Cliente {
     portalToken: (r.portal_token as string | null) ?? null,
     temSenha: !!(r.senha_hash as string | null),
     portalAtivadoEm: r.portal_ativado_em ? (r.portal_ativado_em as Date).toISOString() : null,
+    deletadoEm: r.deletado_em ? (r.deletado_em as Date).toISOString() : null,
     criadoEm: (r.criado_em as Date).toISOString(),
     atualizadoEm: (r.atualizado_em as Date).toISOString(),
   };
@@ -22,16 +23,23 @@ function rowToCliente(r: Record<string, unknown>): Cliente {
 
 const SELECT_COLS = `
   id, cpf, nome, whatsapp, email, endereco, cidade, observacoes,
-  portal_token, senha_hash, portal_ativado_em,
+  portal_token, senha_hash, portal_ativado_em, deletado_em,
   criado_em, atualizado_em
 `;
 
-export async function listClientesComAgregados(): Promise<ClienteComAgregados[]> {
+export interface ListClientesOptions {
+  includeDeleted?: boolean;
+}
+
+export async function listClientesComAgregados(
+  opts: ListClientesOptions = {},
+): Promise<ClienteComAgregados[]> {
   return withClient(async (c) => {
+    const where = opts.includeDeleted ? '' : 'WHERE c.deletado_em IS NULL';
     const res = await c.query(`
       SELECT
         c.id, c.cpf, c.nome, c.whatsapp, c.email, c.endereco, c.cidade, c.observacoes,
-        c.portal_token, c.senha_hash, c.portal_ativado_em,
+        c.portal_token, c.senha_hash, c.portal_ativado_em, c.deletado_em,
         c.criado_em, c.atualizado_em,
         COALESCE(SUM(v.valor_original) FILTER (WHERE v.deletado_em IS NULL), 0) AS total_emitido,
         COALESCE(SUM(v.valor_original - v.saldo) FILTER (WHERE v.deletado_em IS NULL), 0) AS total_abatido,
@@ -41,6 +49,7 @@ export async function listClientesComAgregados(): Promise<ClienteComAgregados[]>
         MAX(v.criado_em) FILTER (WHERE v.deletado_em IS NULL) AS ultima_compra
       FROM clientes c
       LEFT JOIN vales v ON v.cliente_id = c.id
+      ${where}
       GROUP BY c.id
       ORDER BY c.nome ASC
     `);
@@ -70,13 +79,40 @@ export async function getCliente(id: number): Promise<Cliente | null> {
 }
 
 export async function getClienteByCpf(cpf: string): Promise<Cliente | null> {
+  const cpfDigits = digitsOnly(cpf);
   return withClient(async (c) => {
     const res = await c.query(
-      `SELECT ${SELECT_COLS} FROM clientes WHERE cpf = $1`,
-      [cpf],
+      `SELECT ${SELECT_COLS} FROM clientes WHERE cpf = $1 AND deletado_em IS NULL`,
+      [cpfDigits],
     );
     if (res.rows.length === 0) return null;
     return rowToCliente(res.rows[0]);
+  });
+}
+
+export async function softDeleteCliente(id: number): Promise<void> {
+  await withClient(async (c) => {
+    const res = await c.query(
+      `UPDATE clientes SET deletado_em = NOW(), atualizado_em = NOW()
+       WHERE id = $1 AND deletado_em IS NULL`,
+      [id],
+    );
+    if (res.rowCount === 0) {
+      const exists = await c.query('SELECT 1 FROM clientes WHERE id = $1', [id]);
+      if (exists.rows.length === 0) throw new Error('Cliente não encontrado.');
+      throw new Error('Cliente já está excluído.');
+    }
+  });
+}
+
+export async function restoreCliente(id: number): Promise<void> {
+  await withClient(async (c) => {
+    const res = await c.query(
+      `UPDATE clientes SET deletado_em = NULL, atualizado_em = NOW()
+       WHERE id = $1 AND deletado_em IS NOT NULL`,
+      [id],
+    );
+    if (res.rowCount === 0) throw new Error('Cliente não está excluído.');
   });
 }
 
