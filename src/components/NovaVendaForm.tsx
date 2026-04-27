@@ -125,9 +125,9 @@ export function NovaVendaForm({
   const vistos = recentes.filter((v) => !v.deletadoEm).slice(0, 6);
 
   return (
-    <div className="grid lg:grid-cols-2 gap-8 items-stretch">
-      <div className="flex flex-col gap-6">
-      <section className="lulu-card p-7">
+    <div className="grid lg:grid-cols-2 gap-6 lg:gap-8 lg:items-stretch min-w-0">
+      <div className="flex flex-col gap-6 min-w-0">
+      <section className="lulu-card p-5 sm:p-7 min-w-0">
         <h2 className="font-display text-2xl text-lulu-magenta mb-1">Dados da troca</h2>
         <p className="text-sm text-ink-soft mb-5">
           Preencha os dados de quem está vendendo seus produtos seminovos. 🩷
@@ -214,7 +214,7 @@ export function NovaVendaForm({
         </div>
       </section>
 
-      <section className="lulu-card p-7 flex-1 flex flex-col min-h-0">
+      <section className="lulu-card p-5 sm:p-7 flex-1 flex flex-col min-h-0 min-w-0">
         <div className="flex items-baseline justify-between gap-3 mb-4">
           <h2 className="font-display text-2xl text-lulu-magenta">Vales recentes</h2>
           {recentes.length > 6 && (
@@ -270,8 +270,8 @@ export function NovaVendaForm({
       </section>
       </div>
 
-      <aside className="lg:sticky lg:top-6">
-        <div className="lulu-card p-7">
+      <aside className="lg:sticky lg:top-6 min-w-0">
+        <div className="lulu-card p-5 sm:p-7 min-w-0">
           <h2 className="font-display text-2xl text-lulu-magenta mb-1">
             Pré-visualização
           </h2>

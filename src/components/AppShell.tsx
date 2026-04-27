@@ -179,7 +179,7 @@ export function AppShell({ initialVales, portalBase }: Props) {
   };
 
   return (
-    <div className="app-shell max-w-[1180px] mx-auto px-6 py-8 pb-16">
+    <div className="app-shell max-w-[1180px] mx-auto px-4 sm:px-6 py-6 sm:py-8 pb-16 overflow-x-clip">
       <header className="flex items-center justify-between flex-wrap gap-3 pb-4">
         <div className="flex items-center gap-3">
           <div className="relative w-12 h-12 rounded-full overflow-hidden border-[3px] border-ink shadow-sticker shrink-0">
