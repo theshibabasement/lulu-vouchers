@@ -2,6 +2,7 @@ import { headers } from 'next/headers';
 import { getCurrentCliente } from '@/lib/cliente-auth';
 import { getClienteVales } from '@/lib/clientes';
 import { listAvaliacoes } from '@/lib/avaliacoes';
+import { getVendasByCliente } from '@/lib/vendas';
 import { PortalLanding } from '@/components/cliente/PortalLanding';
 import { PortalDashboard } from '@/components/cliente/PortalDashboard';
 
@@ -33,9 +34,10 @@ export default async function ClientePage({
     return <PortalLanding tokenInvalido={sp.invalido === '1'} />;
   }
 
-  const [vales, avaliacoes] = await Promise.all([
+  const [vales, avaliacoes, vendas] = await Promise.all([
     getClienteVales(cliente.id),
     listAvaliacoes({ clienteId: cliente.id }),
+    getVendasByCliente(cliente.id),
   ]);
 
   return (
@@ -43,6 +45,7 @@ export default async function ClientePage({
       cliente={cliente}
       vales={vales}
       avaliacoes={avaliacoes}
+      vendas={vendas}
       portalBase={portalBase}
     />
   );

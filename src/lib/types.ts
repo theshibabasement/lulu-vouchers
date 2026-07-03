@@ -29,6 +29,7 @@ export interface Cliente {
   nome: string;
   whatsapp?: string | null;
   email?: string | null;
+  instagram?: string | null;
   endereco?: string | null;
   cidade?: string | null;
   observacoes?: string | null;
@@ -82,4 +83,32 @@ export interface Avaliacao {
   valeId?: string | null;
   criadoEm: string;
   atualizadoEm: string;
+}
+
+/** Janela de retirada do pedido pago, em dias. */
+export const JANELA_RETIRADA_DIAS = 7;
+
+export type VendaStatus = 'aguardando' | 'retirada' | 'cancelada';
+
+export interface Venda {
+  id: number;
+  /** Código legível de localização do pedido (ex.: 1042 → exibido "#1042"). */
+  codigo: number;
+  clienteId: number | null;
+  /** Token do portal do cliente — pra montar o link no aviso de retirada. */
+  portalToken?: string | null;
+  /** Snapshot — preserva os dados mesmo se o cliente for editado/removido. */
+  nome: string;
+  cpf?: string | null;
+  whatsapp?: string | null;
+  instagram?: string | null;
+  valor: number;
+  status: VendaStatus;
+  observacoes?: string | null;
+  /** criado_em + 7 dias — janela de retirada. */
+  prazoRetirada: string; // ISO
+  retiradaEm?: string | null;
+  canceladaEm?: string | null;
+  criadoEm: string; // ISO
+  atualizadoEm: string; // ISO
 }

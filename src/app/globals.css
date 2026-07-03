@@ -99,6 +99,24 @@
   margin-top: 4px; margin-bottom: 6px;
 }
 
+/* Guia de venda online — código de localização e prazo de retirada */
+.receipt .guia-codigo {
+  text-align: center;
+  font-family: ui-monospace, 'SFMono-Regular', 'Menlo', monospace;
+  font-size: 26pt;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  margin: 6px 0 8px;
+}
+.receipt .guia-prazo {
+  text-align: center;
+  font-size: 11pt;
+  margin: 8px 0 4px;
+  padding: 5px 6px;
+  border: 1.5px solid #000;
+  border-radius: 4px;
+}
+
 /* Códigos: QR centralizado em cima, barcode centralizado embaixo */
 .receipt .codes {
   margin-top: 12px;
@@ -194,6 +212,10 @@
   .receipt .qr-caption { font-size: 7pt; margin-top: 1px; }
   .receipt .barcode-svg { max-width: 60mm; }
   .receipt .barcode-block .code-label { font-size: 8.5pt; }
+
+  /* Guia de venda online — compacta pra fita térmica */
+  .receipt .guia-codigo { font-size: 22pt; margin: 3px 0 5px; }
+  .receipt .guia-prazo { font-size: 10pt; margin: 5px 0 3px; padding: 3px 5px; }
 
   .print-receipt {
     width: 80mm;

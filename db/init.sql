@@ -12,6 +12,7 @@ CREATE TABLE IF NOT EXISTS clientes (
   nome              TEXT NOT NULL,
   whatsapp          TEXT,
   email             TEXT,
+  instagram         TEXT,
   endereco          TEXT,
   cidade            TEXT,
   observacoes       TEXT,
@@ -28,11 +29,14 @@ ALTER TABLE clientes ADD COLUMN IF NOT EXISTS portal_token      TEXT UNIQUE;
 ALTER TABLE clientes ADD COLUMN IF NOT EXISTS senha_hash        TEXT;
 ALTER TABLE clientes ADD COLUMN IF NOT EXISTS portal_ativado_em TIMESTAMPTZ;
 ALTER TABLE clientes ADD COLUMN IF NOT EXISTS deletado_em       TIMESTAMPTZ;
+ALTER TABLE clientes ADD COLUMN IF NOT EXISTS instagram         TEXT;
 
 CREATE INDEX IF NOT EXISTS idx_clientes_cpf      ON clientes(cpf);
 CREATE INDEX IF NOT EXISTS idx_clientes_nome     ON clientes(nome);
 CREATE INDEX IF NOT EXISTS idx_clientes_token    ON clientes(portal_token);
 CREATE INDEX IF NOT EXISTS idx_clientes_deletado ON clientes(deletado_em);
+-- Instagram normalizado (sem @, minúsculo) — busca por usuário
+CREATE INDEX IF NOT EXISTS idx_clientes_instagram ON clientes(lower(instagram));
 
 -- Backfill de portal_token pros clientes sem (base64url — URL-safe)
 UPDATE clientes
@@ -82,6 +86,38 @@ CREATE TABLE IF NOT EXISTS transacoes (
 
 CREATE INDEX IF NOT EXISTS idx_tx_vale ON transacoes(vale_id);
 CREATE INDEX IF NOT EXISTS idx_tx_data ON transacoes(data DESC);
+
+-- ====================================================
+-- Vendas Online (pedidos do Instagram — pagos, aguardando retirada)
+-- ====================================================
+-- Sequência do código legível de localização (#1001, #1002, ...).
+-- Só cresce, nunca repete — fácil de ditar e achar o pacote na prateleira.
+CREATE SEQUENCE IF NOT EXISTS vendas_codigo_seq START 1001;
+
+CREATE TABLE IF NOT EXISTS vendas (
+  id             BIGSERIAL PRIMARY KEY,
+  codigo         BIGINT NOT NULL UNIQUE DEFAULT nextval('vendas_codigo_seq'),
+  cliente_id     BIGINT REFERENCES clientes(id) ON DELETE SET NULL,
+  -- snapshot — preserva os dados mesmo se o cliente for editado/removido
+  nome           TEXT NOT NULL,
+  cpf            TEXT,
+  whatsapp       TEXT,
+  instagram      TEXT,
+  valor          NUMERIC(12,2) NOT NULL CHECK (valor > 0),
+  status         TEXT NOT NULL DEFAULT 'aguardando'
+                   CHECK (status IN ('aguardando','retirada','cancelada')),
+  observacoes    TEXT,
+  prazo_retirada TIMESTAMPTZ NOT NULL,  -- criado_em + 7 dias (janela de retirada)
+  retirada_em    TIMESTAMPTZ,
+  cancelada_em   TIMESTAMPTZ,
+  criado_em      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  atualizado_em  TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_vendas_codigo  ON vendas(codigo);
+CREATE INDEX IF NOT EXISTS idx_vendas_status  ON vendas(status);
+CREATE INDEX IF NOT EXISTS idx_vendas_cliente ON vendas(cliente_id);
+CREATE INDEX IF NOT EXISTS idx_vendas_criado  ON vendas(criado_em DESC);
 
 -- ====================================================
 -- Avaliações (agendamentos)

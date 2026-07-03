@@ -11,6 +11,7 @@ function rowToCliente(r: Record<string, unknown>): Cliente {
     nome: r.nome as string,
     whatsapp: (r.whatsapp as string | null) ?? null,
     email: (r.email as string | null) ?? null,
+    instagram: (r.instagram as string | null) ?? null,
     endereco: (r.endereco as string | null) ?? null,
     cidade: (r.cidade as string | null) ?? null,
     observacoes: (r.observacoes as string | null) ?? null,
@@ -24,7 +25,7 @@ function rowToCliente(r: Record<string, unknown>): Cliente {
 }
 
 const SELECT_COLS = `
-  id, cpf, nome, whatsapp, email, endereco, cidade, observacoes,
+  id, cpf, nome, whatsapp, email, instagram, endereco, cidade, observacoes,
   portal_token, senha_hash, portal_ativado_em, deletado_em,
   criado_em, atualizado_em
 `;
@@ -40,7 +41,7 @@ export async function listClientesComAgregados(
     const where = opts.includeDeleted ? '' : 'WHERE c.deletado_em IS NULL';
     const res = await c.query(`
       SELECT
-        c.id, c.cpf, c.nome, c.whatsapp, c.email, c.endereco, c.cidade, c.observacoes,
+        c.id, c.cpf, c.nome, c.whatsapp, c.email, c.instagram, c.endereco, c.cidade, c.observacoes,
         c.portal_token, c.senha_hash, c.portal_ativado_em, c.deletado_em,
         c.criado_em, c.atualizado_em,
         COALESCE(SUM(v.valor_original) FILTER (WHERE v.deletado_em IS NULL), 0) AS total_emitido,
@@ -94,6 +95,19 @@ export async function getClienteByCpf(cpf: string): Promise<Cliente | null> {
     const res = await c.query(
       `SELECT ${SELECT_COLS} FROM clientes WHERE cpf = $1 AND deletado_em IS NULL`,
       [cpfDigits],
+    );
+    if (res.rows.length === 0) return null;
+    return rowToCliente(res.rows[0]);
+  });
+}
+
+export async function getClienteByInstagram(instagram: string): Promise<Cliente | null> {
+  const handle = normalizeInstagram(instagram);
+  if (!handle) return null;
+  return withClient(async (c) => {
+    const res = await c.query(
+      `SELECT ${SELECT_COLS} FROM clientes WHERE lower(instagram) = lower($1) AND deletado_em IS NULL`,
+      [handle],
     );
     if (res.rows.length === 0) return null;
     return rowToCliente(res.rows[0]);
@@ -239,6 +253,7 @@ export interface UpsertClienteInput {
   nome: string;
   whatsapp?: string | null;
   email?: string | null;
+  instagram?: string | null;
   endereco?: string | null;
   cidade?: string | null;
   observacoes?: string | null;
@@ -252,6 +267,18 @@ function clean(v: string | null | undefined): string | null {
 
 export function digitsOnly(v: string): string {
   return v.replace(/\D/g, '');
+}
+
+/** Normaliza @usuario do Instagram: tira @, espaços e URL; guarda só o handle. null se vazio. */
+export function normalizeInstagram(raw: string | null | undefined): string | null {
+  const s = clean(raw);
+  if (!s) return null;
+  const handle = s
+    .replace(/^https?:\/\/(www\.)?instagram\.com\//i, '')
+    .replace(/^@+/, '')
+    .replace(/\/+$/, '')
+    .trim();
+  return handle ? handle : null;
 }
 
 /** Valida e normaliza WhatsApp. Lança se inválido. Retorna null se vazio. */
@@ -299,12 +326,13 @@ export async function upsertClienteTxFull(
 
   const res = await client.query(
     `
-    INSERT INTO clientes (cpf, nome, whatsapp, email, endereco, cidade, observacoes, portal_token)
-    VALUES ($1, $2, $3, $4, $5, $6, $7, translate(encode(gen_random_bytes(18), 'base64'), '+/=', '-_'))
+    INSERT INTO clientes (cpf, nome, whatsapp, email, instagram, endereco, cidade, observacoes, portal_token)
+    VALUES ($1, $2, $3, $4, $5, $6, $7, $8, translate(encode(gen_random_bytes(18), 'base64'), '+/=', '-_'))
     ON CONFLICT (cpf) DO UPDATE SET
       nome          = EXCLUDED.nome,
       whatsapp      = COALESCE(EXCLUDED.whatsapp,    clientes.whatsapp),
       email         = COALESCE(EXCLUDED.email,       clientes.email),
+      instagram     = COALESCE(EXCLUDED.instagram,   clientes.instagram),
       endereco      = COALESCE(EXCLUDED.endereco,    clientes.endereco),
       cidade        = COALESCE(EXCLUDED.cidade,      clientes.cidade),
       observacoes   = COALESCE(EXCLUDED.observacoes, clientes.observacoes),
@@ -317,6 +345,7 @@ export async function upsertClienteTxFull(
       input.nome.trim(),
       normalizeWhatsapp(input.whatsapp),
       clean(input.email),
+      normalizeInstagram(input.instagram),
       clean(input.endereco),
       clean(input.cidade),
       clean(input.observacoes),
@@ -333,6 +362,7 @@ export interface UpdateClienteInput {
   nome?: string;
   whatsapp?: string | null;
   email?: string | null;
+  instagram?: string | null;
   endereco?: string | null;
   cidade?: string | null;
   observacoes?: string | null;
@@ -357,6 +387,7 @@ export async function updateCliente(
   set('nome', 'nome', (v) => (v as string).trim());
   set('whatsapp', 'whatsapp', (v) => normalizeWhatsapp(v as string));
   set('email', 'email', (v) => clean(v as string));
+  set('instagram', 'instagram', (v) => normalizeInstagram(v as string));
   set('endereco', 'endereco', (v) => clean(v as string));
   set('cidade', 'cidade', (v) => clean(v as string));
   set('observacoes', 'observacoes', (v) => clean(v as string));

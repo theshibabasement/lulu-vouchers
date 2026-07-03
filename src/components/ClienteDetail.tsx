@@ -155,6 +155,7 @@ export function ClienteDetail({ clienteId, portalBase, onClose, onChanged, onOpe
           nome: form.nome,
           whatsapp: form.whatsapp ?? null,
           email: form.email ?? null,
+          instagram: form.instagram ?? null,
           endereco: form.endereco ?? null,
           cidade: form.cidade ?? null,
           observacoes: form.observacoes ?? null,
@@ -222,6 +223,7 @@ export function ClienteDetail({ clienteId, portalBase, onClose, onChanged, onOpe
               <Section title="Dados pessoais">
                 <Row k="CPF" v={<span className="font-mono">{formatCPF(cliente.cpf)}</span>} />
                 <Row k="WhatsApp" v={cliente.whatsapp || '—'} />
+                <Row k="Instagram" v={cliente.instagram ? '@' + cliente.instagram : '—'} />
                 <Row k="E-mail" v={cliente.email || '—'} />
                 <Row k="Endereço" v={cliente.endereco || '—'} />
                 <Row k="Cidade" v={cliente.cidade || '—'} />
@@ -381,6 +383,7 @@ export function ClienteDetail({ clienteId, portalBase, onClose, onChanged, onOpe
                 onChange={(v) => setForm({ ...form, whatsapp: maskWhatsappInput(v) })}
                 placeholder="(54) 99999-9999"
               />
+              <Field label="Instagram" value={form.instagram ?? ''} onChange={(v) => setForm({ ...form, instagram: v })} placeholder="@usuario" />
               <Field label="E-mail" value={form.email ?? ''} onChange={(v) => setForm({ ...form, email: v })} placeholder="opcional" />
               <Field label="Endereço" value={form.endereco ?? ''} onChange={(v) => setForm({ ...form, endereco: v })} placeholder="opcional" />
               <Field label="Cidade" value={form.cidade ?? ''} onChange={(v) => setForm({ ...form, cidade: v })} placeholder="opcional" />

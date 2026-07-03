@@ -37,6 +37,7 @@ export async function PATCH(
         nome?: string;
         whatsapp?: string | null;
         email?: string | null;
+        instagram?: string | null;
         endereco?: string | null;
         cidade?: string | null;
         observacoes?: string | null;

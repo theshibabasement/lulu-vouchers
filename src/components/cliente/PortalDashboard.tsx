@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useState } from 'react';
 import { formatBRL, formatDate, formatDateTime } from '@/lib/format';
-import type { Avaliacao, Cliente, Vale } from '@/lib/types';
+import type { Avaliacao, Cliente, Vale, Venda } from '@/lib/types';
 import { ValeCard } from './ValeCard';
 import { ValeFullView } from './ValeFullView';
 import { CadastrarSenhaForm } from './CadastrarSenhaForm';
@@ -13,10 +13,11 @@ interface Props {
   cliente: Cliente;
   vales: Vale[];
   avaliacoes: Avaliacao[];
+  vendas: Venda[];
   portalBase: string;
 }
 
-export function PortalDashboard({ cliente, vales, avaliacoes, portalBase }: Props) {
+export function PortalDashboard({ cliente, vales, avaliacoes, vendas, portalBase }: Props) {
   const [openVale, setOpenVale] = useState<Vale | null>(null);
   const [showSenha, setShowSenha] = useState(false);
 
@@ -134,6 +135,20 @@ export function PortalDashboard({ cliente, vales, avaliacoes, portalBase }: Prop
           </a>
         </div>
 
+        {/* Pedidos pra retirar */}
+        {vendas.length > 0 && (
+          <section>
+            <h2 className="font-display text-2xl text-lulu-purple mb-3">
+              Pedidos pra retirar ({vendas.filter((v) => v.status === 'aguardando').length})
+            </h2>
+            <div className="space-y-3">
+              {vendas.map((v) => (
+                <PedidoCard key={v.id} venda={v} />
+              ))}
+            </div>
+          </section>
+        )}
+
         {/* Vales */}
         <section>
           <h2 className="font-display text-2xl text-lulu-purple mb-3">
@@ -188,6 +203,51 @@ export function PortalDashboard({ cliente, vales, avaliacoes, portalBase }: Prop
         )}
       </div>
     </main>
+  );
+}
+
+function fmtCodigoPedido(codigo: number): string {
+  return '#' + String(codigo).padStart(4, '0');
+}
+
+function fmtDiaPedido(iso: string): string {
+  return new Date(iso).toLocaleDateString('pt-BR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+}
+
+function PedidoCard({ venda }: { venda: Venda }) {
+  const aguardando = venda.status === 'aguardando';
+  const dias = Math.ceil((new Date(venda.prazoRetirada).getTime() - Date.now()) / 86400000);
+  const vencido = aguardando && dias < 0;
+  return (
+    <div
+      className={`rounded-lg p-4 border-2 ${
+        aguardando ? 'bg-paper border-lulu-mint' : 'bg-paper-tint border-line'
+      }`}
+    >
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <span className="font-mono font-bold text-lulu-purple">{fmtCodigoPedido(venda.codigo)}</span>
+        <span
+          className={`lulu-pill ${
+            aguardando ? 'bg-lulu-mint text-ink' : 'bg-lulu-purple-soft text-lulu-purple'
+          }`}
+        >
+          {aguardando ? 'Pronto pra retirar' : 'Retirado'}
+        </span>
+      </div>
+      {venda.observacoes && <div className="text-sm text-ink mt-2">{venda.observacoes}</div>}
+      <div className="text-sm text-ink-soft mt-1 flex items-center justify-between flex-wrap gap-2">
+        <span className="font-display font-bold text-lulu-magenta">{formatBRL(venda.valor)}</span>
+        {aguardando && (
+          <span className={vencido ? 'text-lulu-heart-red font-bold' : ''}>
+            Retirar até {fmtDiaPedido(venda.prazoRetirada)}
+          </span>
+        )}
+      </div>
+    </div>
   );
 }
 

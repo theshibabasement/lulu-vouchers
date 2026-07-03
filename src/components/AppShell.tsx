@@ -3,6 +3,11 @@
 import Image from 'next/image';
 import { useCallback, useEffect, useState } from 'react';
 import { NovaVendaForm } from './NovaVendaForm';
+import { NovaVendaOnlineForm } from './NovaVendaOnlineForm';
+import { VendasList, type VendasFilter } from './VendasList';
+import { PrintAreaVenda } from './PrintAreaVenda';
+import { AvisarRetiradaModal } from './AvisarRetiradaModal';
+import { formatCodigo, type GuiaVendaData } from './GuiaVenda';
 import { ValesList } from './ValesList';
 import { ValeDetail } from './ValeDetail';
 import { ClientesList } from './ClientesList';
@@ -14,7 +19,7 @@ import { PrintArea } from './PrintArea';
 import { WhatsAppShareModal } from './WhatsAppShareModal';
 import { ToastStack, type ToastMsg } from './Toast';
 import { playSuccessSound } from '@/lib/sound';
-import type { Vale, ClienteComAgregados } from '@/lib/types';
+import type { Vale, ClienteComAgregados, Venda } from '@/lib/types';
 import type { ReceiptData } from './Receipt';
 
 interface Props {
@@ -22,7 +27,7 @@ interface Props {
   portalBase: string;
 }
 
-type View = 'nova' | 'vales' | 'clientes' | 'avaliacoes' | 'painel' | 'usuarios';
+type View = 'nova' | 'vales' | 'vendas' | 'clientes' | 'avaliacoes' | 'painel' | 'usuarios';
 
 interface MeAdmin {
   id: number;
@@ -47,6 +52,11 @@ export function AppShell({ initialVales, portalBase }: Props) {
     | null
   >(null);
   const [shareVale, setShareVale] = useState<Vale | null>(null);
+  const [vendas, setVendas] = useState<Venda[]>([]);
+  const [vendasFilter, setVendasFilter] = useState<VendasFilter>('aguardando');
+  const [vendasSubview, setVendasSubview] = useState<'nova' | 'lista'>('nova');
+  const [printVenda, setPrintVenda] = useState<GuiaVendaData | null>(null);
+  const [avisarVenda, setAvisarVenda] = useState<Venda | null>(null);
   const [toasts, setToasts] = useState<ToastMsg[]>([]);
   const [me, setMe] = useState<MeAdmin | null>(null);
 
@@ -92,6 +102,57 @@ export function AppShell({ initialVales, portalBase }: Props) {
       /* ignore */
     }
   }, [clientesFilter]);
+
+  const refreshVendas = useCallback(async () => {
+    try {
+      const r = await fetch('/api/vendas?includeCanceladas=1', { cache: 'no-store' });
+      if (!r.ok) return;
+      const j = (await r.json()) as { vendas: Venda[] };
+      setVendas(j.vendas);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
+  const handleVendaCreated = useCallback(
+    (venda: Venda) => {
+      setVendas((cur) => [venda, ...cur]);
+      setPrintVenda(vendaToGuia(venda));
+      playSuccessSound();
+      pushToast(`Pedido ${formatCodigo(venda.codigo)} registrado e enviado pra impressão`, 'success');
+    },
+    [pushToast],
+  );
+
+  const handleRetirar = useCallback(
+    async (id: number) => {
+      try {
+        const r = await fetch(`/api/vendas/${id}/retirar`, { method: 'POST' });
+        const j = (await r.json()) as { venda?: Venda; error?: string };
+        if (!r.ok || !j.venda) throw new Error(j.error || 'Falha ao marcar retirada.');
+        setVendas((cur) => cur.map((v) => (v.id === id ? j.venda! : v)));
+        pushToast('Pedido marcado como retirado.', 'success');
+      } catch (e) {
+        pushToast((e as Error).message, 'error');
+      }
+    },
+    [pushToast],
+  );
+
+  const handleCancelarVenda = useCallback(
+    async (id: number) => {
+      try {
+        const r = await fetch(`/api/vendas/${id}`, { method: 'DELETE' });
+        const j = (await r.json()) as { venda?: Venda; error?: string };
+        if (!r.ok || !j.venda) throw new Error(j.error || 'Falha ao cancelar.');
+        setVendas((cur) => cur.map((v) => (v.id === id ? j.venda! : v)));
+        pushToast('Venda cancelada.', 'success');
+      } catch (e) {
+        pushToast((e as Error).message, 'error');
+      }
+    },
+    [pushToast],
+  );
 
   useEffect(() => {
     if (detail) {
@@ -176,6 +237,7 @@ export function AppShell({ initialVales, portalBase }: Props) {
     setView(v);
     if (v === 'vales') refreshVales();
     if (v === 'clientes') refreshClientes();
+    if (v === 'vendas') refreshVendas();
   };
 
   return (
@@ -231,6 +293,12 @@ export function AppShell({ initialVales, portalBase }: Props) {
             {vales.filter((v) => !v.deletadoEm).length}
           </span>
         </TabBtn>
+        <TabBtn active={view === 'vendas'} onClick={() => switchView('vendas')}>
+          Vendas online
+          <span className="ml-2 px-2 py-0.5 rounded-full text-[11px] font-bold bg-lulu-magenta-soft text-lulu-magenta">
+            {vendas.filter((v) => v.status === 'aguardando').length}
+          </span>
+        </TabBtn>
         <TabBtn active={view === 'clientes'} onClick={() => switchView('clientes')}>
           Clientes
           <span className="ml-2 px-2 py-0.5 rounded-full text-[11px] font-bold bg-lulu-cyan-soft text-lulu-cyan">
@@ -274,6 +342,59 @@ export function AppShell({ initialVales, portalBase }: Props) {
             refreshVales(f);
           }}
         />
+      )}
+
+      {view === 'vendas' && (
+        <div className="min-w-0">
+          <div className="flex gap-1.5 mb-6">
+            <button
+              onClick={() => setVendasSubview('nova')}
+              className={`px-5 py-2 rounded-full text-sm font-bold border-2 transition ${
+                vendasSubview === 'nova'
+                  ? 'bg-lulu-magenta text-white border-lulu-magenta'
+                  : 'bg-paper text-ink-soft border-line hover:border-ink-mute'
+              }`}
+            >
+              + Nova venda
+            </button>
+            <button
+              onClick={() => {
+                setVendasSubview('lista');
+                refreshVendas();
+              }}
+              className={`px-5 py-2 rounded-full text-sm font-bold border-2 transition ${
+                vendasSubview === 'lista'
+                  ? 'bg-lulu-magenta text-white border-lulu-magenta'
+                  : 'bg-paper text-ink-soft border-line hover:border-ink-mute'
+              }`}
+            >
+              Pedidos
+              <span className="ml-2 px-2 py-0.5 rounded-full text-[11px] font-bold bg-white/25">
+                {vendas.filter((v) => v.status === 'aguardando').length}
+              </span>
+            </button>
+          </div>
+
+          {vendasSubview === 'nova' ? (
+            <NovaVendaOnlineForm
+              onCreated={handleVendaCreated}
+              onError={(m) => pushToast(m, 'error')}
+              recentes={vendas}
+              onOpenVenda={() => setVendasSubview('lista')}
+              onVerTodas={() => setVendasSubview('lista')}
+            />
+          ) : (
+            <VendasList
+              vendas={vendas}
+              filter={vendasFilter}
+              onFilterChange={setVendasFilter}
+              onRetirar={handleRetirar}
+              onCancelar={handleCancelarVenda}
+              onReimprimir={(v) => setPrintVenda(vendaToGuia(v))}
+              onAvisar={(v) => setAvisarVenda(v)}
+            />
+          )}
+        </div>
       )}
 
       {view === 'clientes' && (
@@ -338,6 +459,15 @@ export function AppShell({ initialVales, portalBase }: Props) {
         onAfterPrint={() => setPrint(null)}
       />
 
+      <PrintAreaVenda data={printVenda} onAfterPrint={() => setPrintVenda(null)} />
+
+      <AvisarRetiradaModal
+        venda={avisarVenda}
+        portalBase={portalBase}
+        onClose={() => setAvisarVenda(null)}
+        onWhatsappSaved={() => refreshVendas()}
+      />
+
       <WhatsAppShareModal
         vale={shareVale}
         portalBase={portalBase}
@@ -374,4 +504,18 @@ function TabBtn({
       {children}
     </button>
   );
+}
+
+function vendaToGuia(v: Venda): GuiaVendaData {
+  return {
+    codigo: v.codigo,
+    nome: v.nome,
+    cpf: v.cpf,
+    whatsapp: v.whatsapp,
+    instagram: v.instagram,
+    valor: v.valor,
+    criadoEm: v.criadoEm,
+    prazoRetirada: v.prazoRetirada,
+    observacoes: v.observacoes,
+  };
 }

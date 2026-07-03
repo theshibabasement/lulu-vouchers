@@ -15,6 +15,7 @@ export async function POST(req: Request) {
         nome?: string;
         whatsapp?: string;
         email?: string;
+        instagram?: string;
         endereco?: string;
         cidade?: string;
         observacoes?: string;
@@ -27,6 +28,7 @@ export async function POST(req: Request) {
       nome: body.nome ?? '',
       whatsapp: body.whatsapp,
       email: body.email,
+      instagram: body.instagram,
       endereco: body.endereco,
       cidade: body.cidade,
       observacoes: body.observacoes,

@@ -65,9 +65,11 @@ export function ClientesList({ clientes, onOpen, filter, onFilterChange }: Props
       list = list.filter((c) => (c.tags ?? []).some((t) => t.id === tagFiltro));
     }
     if (q) {
+      const qHandle = q.replace(/^@/, '');
       list = list.filter(
         (c) =>
           c.nome.toLowerCase().includes(q) ||
+          (c.instagram && c.instagram.toLowerCase().includes(qHandle)) ||
           (qDigits && c.cpf.replace(/\D/g, '').includes(qDigits)) ||
           (qDigits && c.whatsapp && c.whatsapp.replace(/\D/g, '').includes(qDigits)),
       );
