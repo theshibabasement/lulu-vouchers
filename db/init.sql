@@ -291,6 +291,20 @@ FROM (
 ) sub
 WHERE a.cliente_id = sub.id AND sub.id <> sub.keep_id;
 
+-- Migra cliente_id em vendas pro líder do grupo (senão a venda fica linkada a
+-- um cliente duplicado que é soft-deletado abaixo, e o link do portal quebra)
+UPDATE vendas ve
+SET cliente_id = sub.keep_id
+FROM (
+  SELECT
+    id,
+    MIN(id) OVER (
+      PARTITION BY regexp_replace(cpf, '[^0-9]', '', 'g')
+    ) AS keep_id
+  FROM clientes
+) sub
+WHERE ve.cliente_id = sub.id AND sub.id <> sub.keep_id;
+
 -- 4) Soft delete dos duplicados (mantém só o líder de cada grupo)
 UPDATE clientes c
 SET deletado_em = NOW()

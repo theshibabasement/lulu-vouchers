@@ -40,9 +40,6 @@ export function VendasList({
   onAvisar,
 }: Props) {
   const [query, setQuery] = useState('');
-  // Desativado temporariamente: o link do portal no aviso estava dando
-  // "inválido". Voltar pra true quando o fix do link for aplicado.
-  const AVISAR_RETIRADA_HABILITADO = false;
 
   const filtered = useMemo(() => {
     let list = vendas;
@@ -189,7 +186,7 @@ export function VendasList({
                       Marcar retirada
                     </button>
                   )}
-                  {AVISAR_RETIRADA_HABILITADO && v.status === 'aguardando' && (
+                  {v.status === 'aguardando' && (
                     <button
                       onClick={() => onAvisar(v)}
                       className="text-sm py-2 px-3 rounded-full border-2 border-lulu-mint bg-lulu-mint/20 text-ink font-bold hover:bg-lulu-mint/40 transition"
